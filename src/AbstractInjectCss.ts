@@ -1,11 +1,11 @@
 import {InjectCssContract, InjectCssCommonOptions} from "./types";
 
 export default abstract class implements InjectCssContract {
-    protected constructor(protected options: InjectCssCommonOptions) {
+    protected constructor(protected _options: InjectCssCommonOptions) {
     }
 
-    public setOptions(options: Partial<InjectCssCommonOptions>): this {
-        this.options = {...this.options, ...options, tabId: options.tabId ?? this.options.tabId};
+    public options(options: Partial<InjectCssCommonOptions>): this {
+        this._options = {...this._options, ...options, tabId: options.tabId ?? this._options.tabId};
 
         return this;
     }
@@ -15,19 +15,19 @@ export default abstract class implements InjectCssContract {
     public abstract file(files: string | string[]): Promise<void>
 
     protected get frameIds(): number[] | undefined {
-        const {frameId} = this.options;
+        const {frameId} = this._options;
 
         return typeof frameId === 'number' ? [frameId] : typeof frameId !== 'boolean' ? frameId : undefined;
     }
 
     protected get allFrames(): boolean | undefined {
-        const {frameId} = this.options;
+        const {frameId} = this._options;
 
         return typeof frameId === 'boolean' ? frameId : undefined;
     }
 
     protected get matchAboutBlank(): boolean {
-        const {matchAboutBlank} = this.options;
+        const {matchAboutBlank} = this._options;
 
         return typeof matchAboutBlank === "boolean" ? matchAboutBlank : true;
     }

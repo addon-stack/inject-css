@@ -8,12 +8,12 @@ type CSSOrigin = chrome.extensionTypes.CSSOrigin;
 type InjectDetails = chrome.extensionTypes.InjectDetails;
 
 export default class extends AbstractInjectCss {
-    public constructor(protected options: InjectCssV2Options) {
-        super(options);
+    public constructor(protected _options: InjectCssV2Options) {
+        super(_options);
     }
 
     public async run(code: string): Promise<void> {
-        const {tabId, runAt} = this.options;
+        const {tabId, runAt} = this._options;
 
         const details: InjectDetails = {
             code,
@@ -32,7 +32,7 @@ export default class extends AbstractInjectCss {
     }
 
     public async file(files: string | string[]): Promise<void> {
-        const {tabId, runAt} = this.options;
+        const {tabId, runAt} = this._options;
 
         const fileList = typeof files === 'string' ? [files] : files;
 
@@ -59,7 +59,7 @@ export default class extends AbstractInjectCss {
     }
 
     protected get cssOrigin(): CSSOrigin | undefined {
-        const {origin} = this.options;
+        const {origin} = this._options;
 
         return origin && origin.toLowerCase() as CSSOrigin;
     }

@@ -6,7 +6,7 @@ export interface InjectCssContract {
 
     file: (files: string | string[]) => Promise<void>;
 
-    setOptions: (options: Partial<InjectCssCommonOptions>) => this;
+    options: (options: Partial<InjectCssCommonOptions>) => this;
 }
 
 export interface InjectCssCommonOptions {
