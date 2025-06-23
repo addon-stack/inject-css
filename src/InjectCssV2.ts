@@ -17,11 +17,11 @@ export default class extends AbstractInjectCss {
         super(_options);
     }
 
-    public async run(code: string): Promise<void> {
+    public async insert(css: string): Promise<void> {
         const {tabId, runAt} = this._options;
 
         const details: InjectDetails = {
-            code,
+            code: css,
             runAt,
             cssOrigin: this.cssOrigin,
             matchAboutBlank: this.matchAboutBlank,

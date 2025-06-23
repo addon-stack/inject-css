@@ -9,7 +9,7 @@ export default abstract class implements InjectCssContract {
         return this;
     }
 
-    public abstract run(css: string): Promise<void>;
+    public abstract insert(css: string): Promise<void>;
 
     public abstract file(files: string | string[]): Promise<void>;
 

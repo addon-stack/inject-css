@@ -15,7 +15,7 @@ export default class extends AbstractInjectCss {
         super(_options);
     }
 
-    public async run(css: string): Promise<void> {
+    public async insert(css: string): Promise<void> {
         const {origin} = this._options;
 
         return insertCss({target: this.target, css, origin});

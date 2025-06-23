@@ -8,7 +8,7 @@ export interface InjectCssOptions {
 }
 
 export interface InjectCssContract {
-    run: (css: string) => Promise<void>;
+    insert: (css: string) => Promise<void>;
 
     file: (files: string | string[]) => Promise<void>;
 
