@@ -2,10 +2,15 @@ import {insertCssTab} from "@adnbn/browser";
 
 import AbstractInjectCss from "./AbstractInjectCss";
 
-import {InjectCssV2Options} from "./types";
+import {InjectCssOptions} from "./types";
 
 type CSSOrigin = chrome.extensionTypes.CSSOrigin;
 type InjectDetails = chrome.extensionTypes.InjectDetails;
+type RunAt = chrome.extensionTypes.RunAt;
+
+export interface InjectCssV2Options extends InjectCssOptions {
+    runAt?: RunAt;
+}
 
 export default class extends AbstractInjectCss {
     public constructor(protected _options: InjectCssV2Options) {
@@ -34,7 +39,7 @@ export default class extends AbstractInjectCss {
     public async file(files: string | string[]): Promise<void> {
         const {tabId, runAt} = this._options;
 
-        const fileList = typeof files === 'string' ? [files] : files;
+        const fileList = typeof files === "string" ? [files] : files;
 
         const injectTasks: Promise<any>[] = [];
 
@@ -61,6 +66,6 @@ export default class extends AbstractInjectCss {
     protected get cssOrigin(): CSSOrigin | undefined {
         const {origin} = this._options;
 
-        return origin && origin.toLowerCase() as CSSOrigin;
+        return origin && (origin.toLowerCase() as CSSOrigin);
     }
 }

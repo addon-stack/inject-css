@@ -2,9 +2,13 @@ import {insertCss} from "@adnbn/browser";
 
 import AbstractInjectCss from "./AbstractInjectCss";
 
-import {InjectCssV3Options} from "./types";
+import {InjectCssOptions} from "./types";
 
-type InjectionTarget = chrome.scripting.InjectionTarget
+type InjectionTarget = chrome.scripting.InjectionTarget;
+
+export interface InjectCssV3Options extends InjectCssOptions {
+    documentId?: string | string[];
+}
 
 export default class extends AbstractInjectCss {
     constructor(protected _options: InjectCssV3Options) {
@@ -19,7 +23,7 @@ export default class extends AbstractInjectCss {
 
     public async file(fileList: string | string[]): Promise<void> {
         const {origin} = this._options;
-        const files = typeof fileList === 'string' ? [fileList] : fileList;
+        const files = typeof fileList === "string" ? [fileList] : fileList;
 
         await insertCss({target: this.target, files, origin});
     }
@@ -38,6 +42,6 @@ export default class extends AbstractInjectCss {
     protected get documentIds(): string[] | undefined {
         const {documentId} = this._options;
 
-        return typeof documentId === 'string' ? [documentId] : documentId;
+        return typeof documentId === "string" ? [documentId] : documentId;
     }
 }
