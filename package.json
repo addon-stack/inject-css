@@ -1,7 +1,7 @@
 {
   "name": "@adnbn/inject-css",
-  "version": "0.0.1",
-  "description": "",
+  "version": "0.1.0",
+  "description": "A lightweight TypeScript-friendly library to inject CSS into browser extensions (Manifest V2 & V3)",
   "keywords": [
     "browser",
     "addon",
