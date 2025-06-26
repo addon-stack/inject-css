@@ -1,3 +1,4 @@
+type RunAt = chrome.extensionTypes.RunAt;
 type StyleOrigin = chrome.scripting.StyleOrigin;
 
 export interface InjectCssOptions {
@@ -5,6 +6,12 @@ export interface InjectCssOptions {
     frameId?: boolean | number | number[];
     matchAboutBlank?: boolean;
     origin?: StyleOrigin;
+
+    // Options for MV2
+    runAt?: RunAt;
+
+    // Options for MV3
+    documentId?: string | string[];
 }
 
 export interface InjectCssContract {
