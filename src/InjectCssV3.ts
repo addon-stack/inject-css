@@ -6,33 +6,30 @@ import {InjectCssOptions} from "./types";
 
 type InjectionTarget = chrome.scripting.InjectionTarget;
 
-export interface InjectCssV3Options extends InjectCssOptions {
-    documentId?: string | string[];
-}
-
 export default class extends AbstractInjectCss {
-    constructor(protected _options: InjectCssV3Options) {
-        super(_options);
+    constructor(options: InjectCssOptions) {
+        super(options);
     }
 
     public async insert(css: string): Promise<void> {
-        const {origin} = this._options;
-
-        return insertCss({target: this.target, css, origin});
+        await insertCss({
+            target: this.target,
+            origin: this._options.origin,
+            css,
+        });
     }
 
     public async file(fileList: string | string[]): Promise<void> {
-        const {origin} = this._options;
-        const files = typeof fileList === "string" ? [fileList] : fileList;
-
-        await insertCss({target: this.target, files, origin});
+        await insertCss({
+            target: this.target,
+            origin: this._options.origin,
+            files: typeof fileList === "string" ? [fileList] : fileList,
+        });
     }
 
     protected get target(): InjectionTarget {
-        const {tabId} = this._options;
-
         return {
-            tabId,
+            tabId: this._options.tabId,
             allFrames: this.allFrames,
             frameIds: this.frameIds,
             documentIds: this.documentIds,

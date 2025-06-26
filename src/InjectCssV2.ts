@@ -6,22 +6,17 @@ import {InjectCssOptions} from "./types";
 
 type CSSOrigin = chrome.extensionTypes.CSSOrigin;
 type InjectDetails = chrome.extensionTypes.InjectDetails;
-type RunAt = chrome.extensionTypes.RunAt;
-
-export interface InjectCssV2Options extends InjectCssOptions {
-    runAt?: RunAt;
-}
 
 export default class extends AbstractInjectCss {
-    public constructor(protected _options: InjectCssV2Options) {
-        super(_options);
+    public constructor(options: InjectCssOptions) {
+        super(options);
     }
 
-    public async insert(css: string): Promise<void> {
+    public async insert(code: string): Promise<void> {
         const {tabId, runAt} = this._options;
 
         const details: InjectDetails = {
-            code: css,
+            code,
             runAt,
             cssOrigin: this.cssOrigin,
             matchAboutBlank: this.matchAboutBlank,
