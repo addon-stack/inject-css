@@ -68,7 +68,7 @@ Use the `options(opts: Partial<InjectCssOptions>)` method to merge or override o
 
 ## API
 
-### `injectCss(options: InjectCssUnionOptions): InjectCssContract`
+### `injectCss(options: InjectCssOptions): InjectCssContract`
 
 Creates a new CSS injector instance. Detects the manifest version (V2 or V3) via `@adnbn/browser` and delegates to the appropriate implementation.
 
@@ -82,12 +82,14 @@ Creates a new CSS injector instance. Detects the manifest version (V2 or V3) via
 
 The injector accepts the following options (passed to `injectCss(options)` and/or `injector.options(opts)`):
 
-- `tabId` (number, required): Target browser tab ID.
-- `frameId` (boolean | number | number[], optional): Select frames to inject into. `true` for all frames; a number or array of numbers for specific frame IDs.
-- `matchAboutBlank` (boolean, optional): (Manifest V2 only) Include `about:blank` and similar subframes. Defaults to `true`.
-- `runAt` (`'document_start'` | `'document_end'` | `'document_idle'`, optional): (Manifest V2 only) Injection timing, matching Chrome's `runAt` in `insertCSS`.
-- `documentId` (string | string[], optional): (Manifest V3 only) Document IDs for scripting targets.
-- `origin` (`'author'` | `'user'`, optional): CSS origin matching Chrome's API (`cssOrigin` in V2, `origin` in V3).
+| Option          | Type                                                  | Description                                                                                  |
+| --------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| tabId           | number                                                | Required. Target browser tab ID.                                                             |
+| frameId         | boolean \| number \| number[]                         | Optional. Select frames to inject into: `true` for all frames; number or array for specific. |
+| matchAboutBlank | boolean                                               | Optional. (V2 only) Include `about:blank` and similar subframes. Defaults to `true`.         |
+| runAt           | 'document_start' \| 'document_end' \| 'document_idle' | Optional. (V2 only) Injection timing, matches Chrome's `runAt` in `insertCSS`.               |
+| documentId      | string \| string[]                                    | Optional. (V3 only) Document IDs for scripting targets.                                      |
+| origin          | 'author' \| 'user'                                    | Optional. CSS origin matching Chrome's API (`cssOrigin` in V2, `origin` in V3).              |
 
 ## Examples
 
@@ -112,9 +114,23 @@ await injector.file(["styles/reset.css", "styles/theme.css"]);
 
 ## Development
 
-- Build: `npm run build`
-- Watch: `npm run build:watch`
-- Format: `npm run format`
+### Build
+
+```bash
+npm run build
+```
+
+### Watch
+
+```bash
+npm run build:watch
+```
+
+### Format
+
+```bash
+npm run format
+```
 
 ## Contributing
 
