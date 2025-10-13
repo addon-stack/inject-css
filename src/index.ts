@@ -1,4 +1,4 @@
-import {isManifestVersion3} from "@adnbn/browser";
+import {isManifestVersion3} from "@addon-core/browser";
 
 import InjectCssV2 from "./InjectCssV2";
 import InjectCssV3 from "./InjectCssV3";

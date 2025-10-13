@@ -1,5 +1,5 @@
 {
-  "name": "@adnbn/inject-css",
+  "name": "@addon-core/inject-css",
   "version": "0.2.0",
   "description": "A lightweight TypeScript-friendly library to inject CSS into browser extensions (Manifest V2 & V3)",
   "keywords": [
@@ -18,18 +18,26 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git@github.com:addonbone/inject-css.git"
+    "url": "https://github.com/addon-stack/inject-css"
+  },
+  "homepage": "https://github.com/addon-stack/inject-css",
+  "bugs": {
+    "url": "https://github.com/addon-stack/inject-css/issues"
   },
   "license": "MIT",
-  "author": "Addon Bone",
+  "author": "Addon Stack <addonbonedev@gmail.com>",
+  "contributors": [
+    "Anjey Tsibylskij (https://github.com/atldays)"
+  ],
   "type": "module",
-  "main": "dist/index.cjs.js",
+  "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "require": "./dist/index.cjs.js"
+      "require": "./dist/index.cjs"
     }
   },
   "files": [
@@ -42,7 +50,7 @@
     "build:watch": "tsup --watch"
   },
   "dependencies": {
-    "@adnbn/browser": "^0.1.5"
+    "@addon-core/browser": "^0.2.2"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.326",

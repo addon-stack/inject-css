@@ -1,4 +1,4 @@
-import {insertCss} from "@adnbn/browser";
+import {insertCss} from "@addon-core/browser";
 
 import AbstractInjectCss from "./AbstractInjectCss";
 
