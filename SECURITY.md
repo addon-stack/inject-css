@@ -9,7 +9,7 @@ We aim to maintain the latest release line of this project. If you use an older 
 Please report security issues privately and avoid opening public issues with exploitable details.
 
 - Preferred contact: addonbonedev@gmail.com
-- For non-sensitive/general bugs, use the issue tracker: https://github.com/addon-stack/inject-script/issues
+- For non-sensitive/general bugs, use the issue tracker: https://github.com/addon-stack/inject-css/issues
 
 When reporting, please include (if possible):
 
