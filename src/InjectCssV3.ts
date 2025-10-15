@@ -1,16 +1,9 @@
 import {insertCss} from "@addon-core/browser";
-
 import AbstractInjectCss from "./AbstractInjectCss";
-
-import {InjectCssOptions} from "./types";
 
 type InjectionTarget = chrome.scripting.InjectionTarget;
 
 export default class extends AbstractInjectCss {
-    constructor(options: InjectCssOptions) {
-        super(options);
-    }
-
     public async insert(css: string): Promise<void> {
         await insertCss({
             target: this.target,
@@ -28,12 +21,30 @@ export default class extends AbstractInjectCss {
     }
 
     protected get target(): InjectionTarget {
-        return {
-            tabId: this._options.tabId,
-            allFrames: this.allFrames,
-            frameIds: this.frameIds,
-            documentIds: this.documentIds,
-        };
+        const target = {tabId: this._options.tabId};
+
+        if (this.frameIds && this.frameIds.length > 0) {
+            return {...target, frameIds: this.frameIds};
+        }
+
+        if (this.allFrames === true) {
+            return {...target, allFrames: true};
+        }
+
+        // Firefox does not support `documentIds` in the target
+        // getBrowserInfo is only available in firefox
+        // @ts-expect-error
+        const isFirefox = !!browser().runtime.getBrowserInfo;
+
+        if (!isFirefox) {
+            const documentIds = this.documentIds;
+
+            if (documentIds && documentIds.length > 0) {
+                return {...target, documentIds};
+            }
+        }
+
+        return target;
     }
 
     protected get documentIds(): string[] | undefined {
