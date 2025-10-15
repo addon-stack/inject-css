@@ -1,7 +1,7 @@
-import {InjectCssContract, InjectCssOptions} from "./types";
+import type {InjectCssContract, InjectCssOptions} from "./types";
 
 export default abstract class implements InjectCssContract {
-    protected constructor(protected _options: InjectCssOptions) {}
+    constructor(protected _options: InjectCssOptions) {}
 
     public options(options: Partial<InjectCssOptions>): this {
         this._options = {...this._options, ...options, tabId: options.tabId ?? this._options.tabId};
