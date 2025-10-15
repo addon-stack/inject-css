@@ -1,6 +1,6 @@
 {
   "name": "@addon-core/inject-css",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A lightweight TypeScript-friendly library to inject CSS into browser extensions (Manifest V2 & V3)",
   "keywords": [
     "browser",
