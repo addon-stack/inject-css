@@ -1,5 +1,21 @@
 # Changelog
 
+## 🚀 Release `@addon-core/inject-css` v0.3.1 (2025-10-21)
+
+
+### 🐛 Bug Fixed
+
+* handle exceptions when checking for Firefox compatibility ([62ebedc](https://github.com/addon-stack/inject-css/commit/62ebedc5f9f26b3411d65a87e17520f41553e47c))
+
+
+
+
+
+### 🙌 Contributors
+
+- [Addon Stack](https://github.com/addon-stack) (@addon-stack) — 2 commits
+- [Rostyslav Nihrutsa](rostyslav.nihrutsa@gmail.com) — 1 commits
+
 ## 🚀 Release `@addon-core/inject-css` v0.3.0 (2025-10-15)
 
 
