@@ -18,17 +18,18 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/addon-stack/inject-css"
+    "url": "git+https://github.com/addon-stack/inject-css.git"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "homepage": "https://github.com/addon-stack/inject-css",
   "bugs": {
     "url": "https://github.com/addon-stack/inject-css/issues"
   },
   "license": "MIT",
-  "author": "Addon Stack <addonbonedev@gmail.com>",
-  "contributors": [
-    "Anjey Tsibylskij (https://github.com/atldays)"
-  ],
+  "author": "Anjey Tsibylskij (https://github.com/atldays)",
   "type": "module",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
@@ -48,29 +49,47 @@
     "prepare": "husky",
     "build": "tsup",
     "build:watch": "tsup --watch",
+    "dev": "tsup --watch",
     "prepublishOnly": "npm run build",
     "format": "biome format --write .",
     "format:check": "biome check --formatter-enabled=true --linter-enabled=false .",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "lint:fix:aggressive": "biome check --write --unsafe .",
+    "lint:fix:unsafe": "biome check --write --unsafe .",
+    "test": "npm run test:types && npm run build && jest --bail",
+    "test:ci": "npm run test:types && npm run build && jest --ci --coverage",
+    "test:types": "tsc -p tests/tsconfig.json --noEmit",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "jest --bail --passWithNoTests",
-    "test:ci": "jest --ci --passWithNoTests --coverage",
     "release": "release-it"
   },
+  "lint-staged": {
+    "{src,tests}/**/*.{js,jsx,ts,tsx,cjs,mjs}": [
+      "biome check --write --unsafe"
+    ],
+    "*.{json,css,scss,html}": [
+      "biome format --write"
+    ]
+  },
+  "jest": {
+    "coverageProvider": "v8",
+    "testMatch": [
+      "<rootDir>/tests/**/*.test.cjs"
+    ]
+  },
   "dependencies": {
-    "@addon-core/browser": "^0.2.2"
+    "@addon-core/browser": "^0.7.2"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.4",
     "@commitlint/cli": "^20.0.0",
     "@commitlint/config-conventional": "^20.0.0",
     "@release-it/conventional-changelog": "^10.0.1",
-    "@types/chrome": "^0.1.12",
+    "@types/chrome": "^0.2.7",
     "@types/jest": "^30.0.0",
     "husky": "^9.1.7",
     "jest": "^30.1.3",
+    "lint-staged": "^16.2.1",
     "release-it": "^19.0.5",
     "tsup": "^8.5.0",
     "typescript": "^5.9.2"

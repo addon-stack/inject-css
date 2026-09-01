@@ -1,33 +1,116 @@
-import type {InjectCssContract, InjectCssOptions} from "./types";
+import {InjectCssDeliveryError, InjectCssTimeoutError} from "./errors";
+import {
+    validateInjectCssCode,
+    validateInjectCssExecutionOptions,
+    validateInjectCssFiles,
+    validateInjectCssOptions,
+    validateInjectCssTarget,
+} from "./validation";
+import type {
+    InjectCssContract,
+    InjectCssExecutionOptions,
+    InjectCssExecutionOptionsPatch,
+    InjectCssOperation,
+    InjectCssOptions,
+    InjectCssTarget,
+    NonEmptyReadonlyArray,
+} from "./types";
+
+const DEFAULT_TIMEOUT_MS = 4_000;
 
 export default abstract class implements InjectCssContract {
-    constructor(protected _options: InjectCssOptions) {}
+    protected _target: InjectCssTarget;
+    protected _execution: InjectCssExecutionOptions;
 
-    public options(options: Partial<InjectCssOptions>): this {
-        this._options = {...this._options, ...options, tabId: options.tabId ?? this._options.tabId};
+    public constructor(options: InjectCssOptions) {
+        const normalized = validateInjectCssOptions(options);
+
+        this._target = normalized.target;
+        this._execution = normalized.execution;
+    }
+
+    public target(target: InjectCssTarget): this {
+        const normalizedTarget = validateInjectCssTarget(target);
+
+        this.assertAdapterSupport(normalizedTarget, this._execution);
+        this._target = normalizedTarget;
+
+        return this;
+    }
+
+    public options(options: InjectCssExecutionOptionsPatch): this {
+        const normalizedOptions = validateInjectCssExecutionOptions(options);
+        const nextExecution = {...this._execution, ...normalizedOptions};
+
+        this.assertAdapterSupport(this._target, nextExecution);
+        this._execution = nextExecution;
 
         return this;
     }
 
     public abstract insert(css: string): Promise<void>;
 
-    public abstract file(files: string | string[]): Promise<void>;
+    public abstract file(files: string | NonEmptyReadonlyArray<string>): Promise<void>;
 
-    protected get frameIds(): number[] | undefined {
-        const {frameId} = this._options;
+    public abstract remove(css: string): Promise<void>;
 
-        return typeof frameId === "number" ? [frameId] : typeof frameId !== "boolean" ? frameId : undefined;
+    public abstract removeFile(files: string | NonEmptyReadonlyArray<string>): Promise<void>;
+
+    protected abstract assertAdapterSupport(target: InjectCssTarget, execution: InjectCssExecutionOptions): void;
+
+    protected validateCode(css: string): string {
+        return validateInjectCssCode(css);
     }
 
-    protected get allFrames(): boolean | undefined {
-        const {frameId} = this._options;
-
-        return typeof frameId === "boolean" ? frameId : undefined;
+    protected normalizeFiles(files: string | NonEmptyReadonlyArray<string>): string[] {
+        return validateInjectCssFiles(files);
     }
 
-    protected get matchAboutBlank(): boolean {
-        const {matchAboutBlank} = this._options;
+    protected snapshotTarget(): InjectCssTarget {
+        return validateInjectCssTarget(this._target);
+    }
 
-        return typeof matchAboutBlank === "boolean" ? matchAboutBlank : true;
+    protected snapshotExecution(): InjectCssExecutionOptions {
+        return {...this._execution};
+    }
+
+    protected get timeoutMs(): number {
+        return this._execution.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    }
+
+    protected async withTimeout<T>(
+        task: Promise<T>,
+        target: InjectCssTarget,
+        timeoutMs: number,
+        operation: InjectCssOperation = "insert"
+    ): Promise<T> {
+        return new Promise<T>((resolve, reject) => {
+            let settled = false;
+
+            const finish = (callback: () => void): void => {
+                if (settled) return;
+
+                settled = true;
+                clearTimeout(timeoutId);
+                callback();
+            };
+
+            const timeoutId = setTimeout(() => {
+                finish(() => reject(new InjectCssTimeoutError(target, timeoutMs, operation)));
+            }, timeoutMs);
+
+            task.then(
+                value => finish(() => resolve(value)),
+                error => finish(() => reject(error))
+            );
+        });
+    }
+
+    protected deliveryError(target: InjectCssTarget, error: unknown, operation: InjectCssOperation = "insert"): Error {
+        if (error instanceof InjectCssDeliveryError || error instanceof InjectCssTimeoutError) {
+            return error;
+        }
+
+        return new InjectCssDeliveryError(target, error, operation);
     }
 }
