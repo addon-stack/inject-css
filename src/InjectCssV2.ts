@@ -1,59 +1,84 @@
 import {insertCssTab} from "@addon-core/browser";
 import AbstractInjectCss from "./AbstractInjectCss";
+import {UnsupportedInjectCssTargetError} from "./errors";
+import type {InjectCssExecutionOptions, InjectCssOptions, InjectCssTarget, NonEmptyReadonlyArray} from "./types";
 
 type CSSOrigin = chrome.extensionTypes.CSSOrigin;
 type InjectDetails = chrome.extensionTypes.InjectDetails;
 
 export default class extends AbstractInjectCss {
+    public constructor(options: InjectCssOptions) {
+        super(options);
+        this.assertAdapterSupport(this._target, this._execution);
+    }
+
     public async insert(code: string): Promise<void> {
-        const {tabId, runAt} = this._options;
+        this.validateCode(code);
 
-        const details: InjectDetails = {
-            code,
-            runAt,
-            cssOrigin: this.cssOrigin,
-            matchAboutBlank: this.matchAboutBlank,
-        };
+        const target = this.snapshotTarget();
+        const execution = this.snapshotExecution();
+        const timeoutMs = this.timeoutMs;
+        const details = this.createDetails(execution, {code});
 
-        if (this.allFrames) {
-            await insertCssTab(tabId, {...details, allFrames: true});
-        } else if (this.frameIds) {
-            await Promise.all(this.frameIds.map(frameId => insertCssTab(tabId, {...details, frameId})));
-        } else {
-            await insertCssTab(tabId, details);
+        try {
+            await this.withTimeout(this.execute(target, details), target, timeoutMs);
+        } catch (error) {
+            throw this.deliveryError(target, error);
         }
     }
 
-    public async file(files: string | string[]): Promise<void> {
-        const {tabId, runAt} = this._options;
+    public async file(files: string | NonEmptyReadonlyArray<string>): Promise<void> {
+        const fileList = this.normalizeFiles(files);
+        const target = this.snapshotTarget();
+        const execution = this.snapshotExecution();
+        const timeoutMs = this.timeoutMs;
+        let stopped = false;
 
-        const fileList = typeof files === "string" ? [files] : files;
+        const task = (async (): Promise<void> => {
+            for (const file of fileList) {
+                if (stopped) return;
 
-        const injectTasks: Promise<any>[] = [];
-
-        for (const file of fileList) {
-            const details: InjectDetails = {
-                file,
-                runAt,
-                cssOrigin: this.cssOrigin,
-                matchAboutBlank: this.matchAboutBlank,
-            };
-
-            if (this.allFrames) {
-                injectTasks.push(insertCssTab(tabId, {...details, allFrames: true}));
-            } else if (this.frameIds) {
-                injectTasks.push(...this.frameIds.map(frameId => insertCssTab(tabId, {...details, frameId})));
-            } else {
-                injectTasks.push(insertCssTab(tabId, details));
+                await this.execute(target, this.createDetails(execution, {file}));
             }
-        }
+        })();
 
-        await Promise.all(injectTasks);
+        try {
+            await this.withTimeout(task, target, timeoutMs);
+        } catch (error) {
+            stopped = true;
+            throw this.deliveryError(target, error);
+        }
     }
 
-    protected get cssOrigin(): CSSOrigin | undefined {
-        const {origin} = this._options;
+    protected assertAdapterSupport(target: InjectCssTarget, _execution: InjectCssExecutionOptions): void {
+        if ("documentIds" in target && target.documentIds !== undefined) {
+            throw new UnsupportedInjectCssTargetError('"documentIds" are not supported by the MV2 adapter.');
+        }
+    }
 
-        return origin && (origin.toLowerCase() as CSSOrigin);
+    private createDetails(
+        execution: InjectCssExecutionOptions,
+        source: Pick<InjectDetails, "code"> | Pick<InjectDetails, "file">
+    ): InjectDetails {
+        return {
+            ...source,
+            ...(execution.runAt !== undefined ? {runAt: execution.runAt} : {}),
+            ...(execution.origin !== undefined ? {cssOrigin: execution.origin.toLowerCase() as CSSOrigin} : {}),
+            ...(execution.matchAboutBlank !== undefined ? {matchAboutBlank: execution.matchAboutBlank} : {}),
+        };
+    }
+
+    private async execute(target: InjectCssTarget, details: InjectDetails): Promise<void> {
+        if ("allFrames" in target && target.allFrames === true) {
+            await insertCssTab(target.tabId, {...details, allFrames: true});
+            return;
+        }
+
+        if ("frameIds" in target && target.frameIds !== undefined) {
+            await Promise.all(target.frameIds.map(frameId => insertCssTab(target.tabId, {...details, frameId})));
+            return;
+        }
+
+        await insertCssTab(target.tabId, details);
     }
 }
