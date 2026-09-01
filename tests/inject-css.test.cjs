@@ -498,30 +498,33 @@ describe("MV3 adapter", () => {
         });
     });
 
-    test("normalizes a native origin capability error", async () => {
-        const runtime = createRuntime(3);
+    test.each(['Unexpected property "origin"', "Invalid style origin"])(
+        "normalizes an MV3 origin capability error: %s",
+        async message => {
+            const runtime = createRuntime(3);
 
-        global.chrome = {
-            runtime,
-            scripting: {
-                insertCSS: (_details, callback) => {
-                    global.chrome.runtime.lastError = {message: 'Unexpected property "origin"'};
-                    callback();
-                    global.chrome.runtime.lastError = undefined;
+            global.chrome = {
+                runtime,
+                scripting: {
+                    insertCSS: (_details, callback) => {
+                        global.chrome.runtime.lastError = {message};
+                        callback();
+                        global.chrome.runtime.lastError = undefined;
+                    },
                 },
-            },
-        };
+            };
 
-        const error = await injectCss({target: {tabId: 2}, origin: "USER"})
-            .insert("body { color: red; }")
-            .catch(cause => cause);
+            const error = await injectCss({target: {tabId: 2}, origin: "USER"})
+                .insert("body { color: red; }")
+                .catch(cause => cause);
 
-        expect(error).toBeInstanceOf(UnsupportedInjectCssOptionError);
-        expect(error).toMatchObject({
-            code: "ERR_INJECT_CSS_UNSUPPORTED_OPTION",
-            cause: expect.any(Error),
-        });
-    });
+            expect(error).toBeInstanceOf(UnsupportedInjectCssOptionError);
+            expect(error).toMatchObject({
+                code: "ERR_INJECT_CSS_UNSUPPORTED_OPTION",
+                cause: expect.any(Error),
+            });
+        }
+    );
 
     test("reports native delivery failures with the target and cause", async () => {
         const runtime = createRuntime(3);
@@ -966,28 +969,31 @@ describe("MV2 adapter", () => {
         });
     });
 
-    test("normalizes an MV2 cssOrigin capability error", async () => {
-        global.chrome = {
-            runtime: createRuntime(2),
-            tabs: {
-                insertCSS: (_tabId, _details, callback) => {
-                    global.chrome.runtime.lastError = {message: 'Unexpected property "cssOrigin"'};
-                    callback();
-                    global.chrome.runtime.lastError = undefined;
+    test.each(['Unexpected property "cssOrigin"', "Invalid style origin"])(
+        "normalizes an MV2 origin capability error: %s",
+        async message => {
+            global.chrome = {
+                runtime: createRuntime(2),
+                tabs: {
+                    insertCSS: (_tabId, _details, callback) => {
+                        global.chrome.runtime.lastError = {message};
+                        callback();
+                        global.chrome.runtime.lastError = undefined;
+                    },
                 },
-            },
-        };
+            };
 
-        const error = await injectCss({target: {tabId: 2}, origin: "USER"})
-            .file("/content.css")
-            .catch(cause => cause);
+            const error = await injectCss({target: {tabId: 2}, origin: "USER"})
+                .file("/content.css")
+                .catch(cause => cause);
 
-        expect(error).toBeInstanceOf(UnsupportedInjectCssOptionError);
-        expect(error).toMatchObject({
-            code: "ERR_INJECT_CSS_UNSUPPORTED_OPTION",
-            cause: expect.any(Error),
-        });
-    });
+            expect(error).toBeInstanceOf(UnsupportedInjectCssOptionError);
+            expect(error).toMatchObject({
+                code: "ERR_INJECT_CSS_UNSUPPORTED_OPTION",
+                cause: expect.any(Error),
+            });
+        }
+    );
 
     test("injects files sequentially while dispatching each file to frames in parallel", async () => {
         const calls = [];
@@ -1029,41 +1035,47 @@ describe("MV2 adapter", () => {
         await expect(pending).resolves.toBeUndefined();
     });
 
-    test("does not start a later MV2 file after the operation times out", async () => {
-        jest.useFakeTimers();
+    test.each([
+        ["insertion", "insertCSS", "file", "insert"],
+        ["removal", "removeCSS", "removeFile", "remove"],
+    ])(
+        "does not start a later MV2 file after %s times out",
+        async (_label, nativeMethod, contractMethod, operation) => {
+            jest.useFakeTimers();
 
-        const calls = [];
-        const callbacks = [];
+            const calls = [];
+            const callbacks = [];
 
-        global.chrome = {
-            runtime: createRuntime(2),
-            tabs: {
-                insertCSS: (tabId, details, callback) => {
-                    calls.push({tabId, details});
-                    callbacks.push(callback);
+            global.chrome = {
+                runtime: createRuntime(2),
+                tabs: {
+                    [nativeMethod]: (tabId, details, callback) => {
+                        calls.push({tabId, details});
+                        callbacks.push(callback);
+                    },
                 },
-            },
-        };
+            };
 
-        const target = {tabId: 6, frameIds: [0, 3]};
-        const pending = injectCss({target, timeoutMs: 5})
-            .file(["/first.css", "/second.css"])
-            .catch(error => error);
+            const target = {tabId: 6, frameIds: [0, 3]};
+            const pending = injectCss({target, timeoutMs: 5})
+                [contractMethod](["/first.css", "/second.css"])
+                .catch(error => error);
 
-        expect(calls.map(call => call.details.file)).toEqual(["/first.css", "/first.css"]);
+            expect(calls.map(call => call.details.file)).toEqual(["/first.css", "/first.css"]);
 
-        jest.advanceTimersByTime(5);
-        const error = await pending;
+            jest.advanceTimersByTime(5);
+            const error = await pending;
 
-        expect(error).toBeInstanceOf(InjectCssTimeoutError);
-        expect(error).toMatchObject({target, timeoutMs: 5});
+            expect(error).toBeInstanceOf(InjectCssTimeoutError);
+            expect(error).toMatchObject({target, timeoutMs: 5, operation});
 
-        callbacks.forEach(callback => {
-            callback();
-        });
-        await Promise.resolve();
-        await Promise.resolve();
+            callbacks.forEach(callback => {
+                callback();
+            });
+            await Promise.resolve();
+            await Promise.resolve();
 
-        expect(calls.map(call => call.details.file)).toEqual(["/first.css", "/first.css"]);
-    });
+            expect(calls.map(call => call.details.file)).toEqual(["/first.css", "/first.css"]);
+        }
+    );
 });

@@ -6,6 +6,7 @@ import {
     UnsupportedInjectCssOptionError,
     UnsupportedInjectCssTargetError,
 } from "./errors";
+import {isUnsupportedOriginCapabilityError, isUnsupportedRemovalCapabilityError} from "./native-errors";
 import type {
     InjectCssExecutionOptions,
     InjectCssOperation,
@@ -34,33 +35,14 @@ export default class extends AbstractInjectCss {
         try {
             await this.withTimeout(this.execute("insert", target, details), target, timeoutMs);
         } catch (error) {
-            this.throwUnsupportedOriginCapability(execution, error);
-            throw this.deliveryError(target, error);
+            this.throwDeliveryError("insert", target, execution, error);
         }
     }
 
     public async file(files: string | NonEmptyReadonlyArray<string>): Promise<void> {
         const fileList = this.normalizeFiles(files);
-        const target = this.snapshotTarget();
-        const execution = this.snapshotExecution();
-        const timeoutMs = this.timeoutMs;
-        let stopped = false;
 
-        const task = (async (): Promise<void> => {
-            for (const file of fileList) {
-                if (stopped) return;
-
-                await this.execute("insert", target, this.createDetails("insert", execution, {file}));
-            }
-        })();
-
-        try {
-            await this.withTimeout(task, target, timeoutMs);
-        } catch (error) {
-            stopped = true;
-            this.throwUnsupportedOriginCapability(execution, error);
-            throw this.deliveryError(target, error);
-        }
+        await this.deliverFiles("insert", fileList);
     }
 
     public async remove(css: string): Promise<void> {
@@ -71,29 +53,8 @@ export default class extends AbstractInjectCss {
 
     public async removeFile(files: string | NonEmptyReadonlyArray<string>): Promise<void> {
         const fileList = this.normalizeFiles(files);
-        const target = this.snapshotTarget();
-        const execution = this.snapshotExecution();
-        const timeoutMs = this.timeoutMs;
-        let stopped = false;
 
-        this.assertRemovalSupport();
-
-        const task = (async (): Promise<void> => {
-            for (const file of fileList) {
-                if (stopped) return;
-
-                await this.execute("remove", target, this.createDetails("remove", execution, {file}));
-            }
-        })();
-
-        try {
-            await this.withTimeout(task, target, timeoutMs, "remove");
-        } catch (error) {
-            stopped = true;
-            this.throwUnsupportedRemovalCapability(error);
-            this.throwUnsupportedOriginCapability(execution, error);
-            throw this.deliveryError(target, error, "remove");
-        }
+        await this.deliverFiles("remove", fileList);
     }
 
     protected assertAdapterSupport(target: InjectCssTarget, _execution: InjectCssExecutionOptions): void {
@@ -169,9 +130,33 @@ export default class extends AbstractInjectCss {
                 "remove"
             );
         } catch (error) {
-            this.throwUnsupportedRemovalCapability(error);
-            this.throwUnsupportedOriginCapability(execution, error);
-            throw this.deliveryError(target, error, "remove");
+            this.throwDeliveryError("remove", target, execution, error);
+        }
+    }
+
+    private async deliverFiles(operation: InjectCssOperation, fileList: readonly string[]): Promise<void> {
+        const target = this.snapshotTarget();
+        const execution = this.snapshotExecution();
+        const timeoutMs = this.timeoutMs;
+        let stopped = false;
+
+        if (operation === "remove") {
+            this.assertRemovalSupport();
+        }
+
+        const task = (async (): Promise<void> => {
+            for (const file of fileList) {
+                if (stopped) return;
+
+                await this.execute(operation, target, this.createDetails(operation, execution, {file}));
+            }
+        })();
+
+        try {
+            await this.withTimeout(task, target, timeoutMs, operation);
+        } catch (error) {
+            stopped = true;
+            this.throwDeliveryError(operation, target, execution, error);
         }
     }
 
@@ -184,31 +169,24 @@ export default class extends AbstractInjectCss {
         }
     }
 
-    private throwUnsupportedRemovalCapability(error: unknown): void {
-        const message = error instanceof Error ? error.message : String(error);
-
-        if (
-            /remove\s*css/i.test(message) &&
-            /(not supported|unsupported|not (?:available|implemented)|is not a function)\b/i.test(message)
-        ) {
+    private throwDeliveryError(
+        operation: InjectCssOperation,
+        target: InjectCssTarget,
+        execution: InjectCssExecutionOptions,
+        error: unknown
+    ): never {
+        if (operation === "remove" && isUnsupportedRemovalCapabilityError(error)) {
             throw new UnsupportedInjectCssOperationError(
                 "remove",
                 'the current MV2 browser does not support "tabs.removeCSS".',
                 error
             );
         }
-    }
 
-    private throwUnsupportedOriginCapability(execution: InjectCssExecutionOptions, error: unknown): void {
-        if (execution.origin === undefined) return;
-
-        const message = error instanceof Error ? error.message : String(error);
-
-        if (
-            /\b(?:css[\s_-]*)?origin\b/i.test(message) &&
-            /(not supported|unsupported|unexpected|unknown|unrecognized)\b/i.test(message)
-        ) {
+        if (execution.origin !== undefined && isUnsupportedOriginCapabilityError(error)) {
             throw new UnsupportedInjectCssOptionError('"origin" is not supported by the current browser.', error);
         }
+
+        throw this.deliveryError(target, error, operation);
     }
 }

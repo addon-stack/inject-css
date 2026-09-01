@@ -5,6 +5,11 @@ import {
     UnsupportedInjectCssOptionError,
     UnsupportedInjectCssTargetError,
 } from "./errors";
+import {
+    isUnsupportedDocumentTargetCapabilityError,
+    isUnsupportedOriginCapabilityError,
+    isUnsupportedRemovalCapabilityError,
+} from "./native-errors";
 import type {
     InjectCssExecutionOptions,
     InjectCssOperation,
@@ -96,18 +101,29 @@ export default class extends AbstractInjectCss {
 
             await this.withTimeout(task, target, timeoutMs, operation);
         } catch (error) {
-            if (this.isUnsupportedDocumentTargetError(target, error)) {
+            if (
+                "documentIds" in target &&
+                target.documentIds !== undefined &&
+                isUnsupportedDocumentTargetCapabilityError(error)
+            ) {
                 throw new UnsupportedInjectCssTargetError(
                     '"documentIds" are not supported by the current browser.',
                     error
                 );
             }
 
-            if (operation === "remove") {
-                this.throwUnsupportedRemovalCapability(error);
+            if (operation === "remove" && isUnsupportedRemovalCapabilityError(error)) {
+                throw new UnsupportedInjectCssOperationError(
+                    "remove",
+                    'the current MV3 browser does not support "scripting.removeCSS".',
+                    error
+                );
             }
 
-            this.throwUnsupportedOriginCapability(execution, error);
+            if (execution.origin !== undefined && isUnsupportedOriginCapabilityError(error)) {
+                throw new UnsupportedInjectCssOptionError('"origin" is not supported by the current browser.', error);
+            }
+
             throw this.deliveryError(target, error, operation);
         }
     }
@@ -141,21 +157,6 @@ export default class extends AbstractInjectCss {
         }
     }
 
-    private throwUnsupportedRemovalCapability(error: unknown): void {
-        const message = error instanceof Error ? error.message : String(error);
-
-        if (
-            /remove\s*css/i.test(message) &&
-            /(not supported|unsupported|not (?:available|implemented)|is not a function)\b/i.test(message)
-        ) {
-            throw new UnsupportedInjectCssOperationError(
-                "remove",
-                'the current MV3 browser does not support "scripting.removeCSS".',
-                error
-            );
-        }
-    }
-
     private toNativeTarget(target: InjectCssTarget): InjectionTarget {
         if ("frameIds" in target && target.frameIds !== undefined) {
             return {tabId: target.tabId, frameIds: [...target.frameIds]};
@@ -170,34 +171,5 @@ export default class extends AbstractInjectCss {
         }
 
         return {tabId: target.tabId};
-    }
-
-    private isUnsupportedDocumentTargetError(target: InjectCssTarget, error: unknown): boolean {
-        if (!("documentIds" in target) || target.documentIds === undefined) {
-            return false;
-        }
-
-        const message = error instanceof Error ? error.message : String(error);
-
-        return (
-            /documentIds?/i.test(message) &&
-            /(not supported|unsupported|unexpected|unknown|unrecognized)\b/i.test(message)
-        );
-    }
-
-    private throwUnsupportedOriginCapability(execution: InjectCssExecutionOptions, error: unknown): void {
-        if (execution.origin === undefined) return;
-
-        const message = error instanceof Error ? error.message : String(error);
-
-        if (/\b(?:(?:css|style)[\s_-]*)?origin\b/i.test(message) && this.isUnsupportedCapabilityMessage(message)) {
-            throw new UnsupportedInjectCssOptionError('"origin" is not supported by the current browser.', error);
-        }
-    }
-
-    private isUnsupportedCapabilityMessage(message: string): boolean {
-        // Native extension APIs expose validation failures as messages rather than stable error codes.
-        // Keep this matcher paired with browser-message fixtures in tests.
-        return /(not supported|unsupported|unexpected|unknown|unrecognized|invalid|not (?:a )?valid)\b/i.test(message);
     }
 }
