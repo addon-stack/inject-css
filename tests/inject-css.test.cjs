@@ -3,6 +3,7 @@ const {
     injectCss: namedInjectCss,
     InjectCssBaseError,
     InjectCssDeliveryError,
+    InjectCssFrameDeliveryError,
     InjectCssTimeoutError,
     InvalidInjectCssCodeError,
     InvalidInjectCssFilesError,
@@ -589,6 +590,61 @@ describe("MV2 adapter", () => {
         expect(error).toMatchObject({
             code: "ERR_INJECT_CSS_DELIVERY",
             target,
+            cause: expect.any(Error),
+        });
+    });
+
+    test("retains the failed frame in the MV2 delivery cause", async () => {
+        const runtime = createRuntime(2);
+        const target = {tabId: 2, frameIds: [0, 3]};
+
+        global.chrome = {
+            runtime,
+            tabs: {
+                insertCSS: (_tabId, details, callback) => {
+                    if (details.frameId === 3) {
+                        global.chrome.runtime.lastError = {message: "Frame 3 is unavailable"};
+                    }
+
+                    callback();
+                    global.chrome.runtime.lastError = undefined;
+                },
+            },
+        };
+
+        const error = await injectCss({target})
+            .insert("body { color: red; }")
+            .catch(cause => cause);
+
+        expect(error).toBeInstanceOf(InjectCssDeliveryError);
+        expect(error.target).toEqual(target);
+        expect(error.cause).toBeInstanceOf(InjectCssFrameDeliveryError);
+        expect(error.cause).toMatchObject({
+            tabId: 2,
+            frameId: 3,
+            cause: expect.objectContaining({message: "Frame 3 is unavailable"}),
+        });
+    });
+
+    test("normalizes an MV2 cssOrigin capability error", async () => {
+        global.chrome = {
+            runtime: createRuntime(2),
+            tabs: {
+                insertCSS: (_tabId, _details, callback) => {
+                    global.chrome.runtime.lastError = {message: 'Unexpected property "cssOrigin"'};
+                    callback();
+                    global.chrome.runtime.lastError = undefined;
+                },
+            },
+        };
+
+        const error = await injectCss({target: {tabId: 2}, origin: "USER"})
+            .file("/content.css")
+            .catch(cause => cause);
+
+        expect(error).toBeInstanceOf(UnsupportedInjectCssOptionError);
+        expect(error).toMatchObject({
+            code: "ERR_INJECT_CSS_UNSUPPORTED_OPTION",
             cause: expect.any(Error),
         });
     });

@@ -13,7 +13,7 @@ export default class extends AbstractInjectCss {
     }
 
     public async insert(css: string): Promise<void> {
-        this.validateCode(css);
+        const code = this.validateCode(css);
 
         const target = this.snapshotTarget();
         const execution = this.snapshotExecution();
@@ -24,7 +24,7 @@ export default class extends AbstractInjectCss {
             execution,
             {
                 target: this.toNativeTarget(target),
-                css,
+                css: code,
                 ...(execution.origin !== undefined ? {origin: execution.origin} : {}),
             },
             timeoutMs

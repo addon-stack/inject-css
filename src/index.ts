@@ -6,6 +6,7 @@ import type {InjectCssContract, InjectCssOptions} from "./types";
 export {
     InjectCssBaseError,
     InjectCssDeliveryError,
+    InjectCssFrameDeliveryError,
     InjectCssTimeoutError,
     InvalidInjectCssCodeError,
     InvalidInjectCssFilesError,

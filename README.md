@@ -165,7 +165,7 @@ try {
 }
 ```
 
-Every package error extends `InjectCssBaseError` and exposes a stable `code`. Delivery and timeout errors also retain the request target. Prefer `code` when errors may cross realms or multiple copies of the dependency may exist.
+Every rejected package operation exposes an error derived from `InjectCssBaseError` with a stable `code`. Delivery and timeout errors also retain the request target. For explicit MV2 frame targets, a delivery error may contain an `InjectCssFrameDeliveryError` cause with the failed `tabId`, `frameId`, and native cause. Prefer `code` when errors may cross realms or multiple copies of the dependency may exist.
 
 Known validation and adapter incompatibilities fail before injection. Browser capabilities discovered only by a native call are normalized after that call.
 
@@ -235,6 +235,7 @@ Runtime exports:
 injectCss
 InjectCssBaseError
 InjectCssDeliveryError
+InjectCssFrameDeliveryError
 InjectCssTimeoutError
 InvalidInjectCssCodeError
 InvalidInjectCssFilesError

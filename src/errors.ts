@@ -96,3 +96,19 @@ export class InjectCssDeliveryError extends InjectCssBaseError {
         this.target = target;
     }
 }
+
+export class InjectCssFrameDeliveryError extends Error {
+    public readonly tabId: number;
+    public readonly frameId: number;
+    public override readonly cause: unknown;
+
+    public constructor(tabId: number, frameId: number, cause: unknown) {
+        const message = cause instanceof Error ? cause.message : String(cause);
+
+        super(`CSS delivery failed in frame ${frameId} of tab ${tabId}: ${message}`);
+        this.name = "InjectCssFrameDeliveryError";
+        this.tabId = tabId;
+        this.frameId = frameId;
+        this.cause = cause;
+    }
+}
