@@ -211,40 +211,6 @@ A resolved promise means the native operation completed. It does not prove that 
 
 In MV2, a timeout stops the package from starting later files in a sequential insertion or removal batch. In MV3, the complete file list is handed to the browser in one native call before a timeout can occur. In either adapter, a timeout cannot cancel a native browser operation that is already in progress.
 
-## Migrating from 0.3.x
-
-Targets now live under the required `target` field:
-
-```ts
-// Before
-const injector = injectCss({
-  tabId: 123,
-  frameId: [1, 2],
-  origin: "USER",
-});
-
-injector.options({frameId: true});
-
-// Now
-const injector = injectCss({
-  target: {tabId: 123, frameIds: [1, 2]},
-  origin: "USER",
-});
-
-injector.target({tabId: 123, allFrames: true});
-```
-
-Migration map:
-
-- `{tabId}` becomes `{target: {tabId}}`.
-- `frameId: false` becomes a top-frame target with no selector.
-- `frameId: 7` becomes `frameIds: [7]`.
-- `frameId: [2, 7]` becomes `frameIds: [2, 7]`.
-- `documentId: "document-a"` becomes `documentIds: ["document-a"]`.
-- Target changes move from `.options()` to `.target()`.
-- `file([])` is now a compile-time and runtime error.
-- Code relying on the old implicit `matchAboutBlank: true` must set it explicitly in MV2.
-
 ## API reference
 
 The factory is available as both a default and named export:
