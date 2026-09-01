@@ -5,7 +5,7 @@
 
 # Contributing to @addon-core/inject-css
 
-This document outlines the process for contributing, reporting issues, and submitting patches. By participating, you agree to abide by the project’s [Code of Conduct](CODE_OF_CONDUCT.md).
+This package provides one typed CSS-injection contract across Manifest V2 and Manifest V3. Contributions should preserve that boundary, keep unsupported capabilities explicit, and include verification for every affected adapter. By participating, you agree to abide by the project’s [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Table of Contents
 
@@ -70,17 +70,30 @@ The following scripts are available and should be used during development:
 
 - `npm run build` — build the project with tsup
 - `npm run build:watch` — build in watch mode
+- `npm run dev` — build in watch mode
 - `npm run format` — format code with Biome
 - `npm run format:check` — check formatting only
 - `npm run lint` — lint code with Biome
 - `npm run lint:fix` — attempt to automatically fix lint issues
 - `npm run lint:fix:aggressive` — fix lint issues using unsafe rules
+- `npm run lint:fix:unsafe` — fix lint issues using unsafe rules
 - `npm run typecheck` — run TypeScript type checks
-- `npm run test` — run tests with Jest
+- `npm run test:types` — type-check public API contract fixtures
+- `npm run test` — type-check fixtures, build the package, and run Jest
 - `npm run test:ci` — run tests in CI with coverage
 - `npm run release` — trigger release via release-it
 
-Note: Husky hooks are configured. On commit, your message is validated with commitlint; on pre-commit, linting/formatting/tests are run.
+Note: Husky hooks are configured. Commit messages are validated with commitlint, pre-commit runs `lint-staged`, and pre-push runs the full type/test/build path.
+
+## Contract Guidelines
+
+- Every operation has one explicit `target`.
+- `allFrames`, `frameIds`, and `documentIds` remain mutually exclusive.
+- Unsupported targets and options fail explicitly; they are never removed silently or replaced with a broader target.
+- `insert()` and `file()` remain strict `Promise<void>` operations because native CSS APIs expose no portable per-frame result.
+- File order is part of the CSS cascade contract and must be preserved.
+- Omitted options preserve native defaults.
+- Frame enumeration, document discovery, and application-specific result aggregation remain outside this package.
 
 ## Pull Request Workflow
 
@@ -98,7 +111,7 @@ Note: Husky hooks are configured. On commit, your message is validated with comm
    npm run test
    ```
 4. Commit changes using [Conventional Commits](https://www.conventionalcommits.org/).
-5. Push to your fork and open a Pull Request against the `main` branch.
+5. Push to your fork and open a Pull Request against the `develop` branch.
 6. Provide a clear title and description, referencing related issues (e.g., `Closes #123`).
 
 ## Code Style & Quality
