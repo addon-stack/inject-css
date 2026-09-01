@@ -95,6 +95,7 @@ const executionOptionsPatch: InjectCssExecutionOptionsPatch = {
 };
 const target: InjectCssTarget = {tabId, documentIds: [documentId]};
 const errorCode: InjectCssErrorCode = "ERR_INJECT_CSS_DELIVERY";
+const frameDeliveryCode: InjectCssErrorCode = "ERR_INJECT_CSS_FRAME_DELIVERY";
 const unsupportedOperationCode: InjectCssErrorCode = "ERR_INJECT_CSS_UNSUPPORTED_OPERATION";
 const operation: InjectCssOperation = "remove";
 
@@ -102,6 +103,7 @@ topFrame.options(executionOptions);
 topFrame.options(executionOptionsPatch);
 topFrame.target(target);
 errorCode.toUpperCase();
+frameDeliveryCode.toUpperCase();
 unsupportedOperationCode.toUpperCase();
 operation.toUpperCase();
 

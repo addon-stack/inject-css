@@ -199,7 +199,7 @@ try {
 }
 ```
 
-Every rejected package operation exposes an error derived from `InjectCssBaseError` with a stable `code`. Delivery and timeout errors also retain the request target and expose `operation` as `"insert"` or `"remove"`. For explicit MV2 frame targets, a delivery error may contain an `InjectCssFrameDeliveryError` cause with the failed `tabId`, `frameId`, operation, and native cause. Prefer `code` when errors may cross realms or multiple copies of the dependency may exist.
+Every rejected package operation exposes an error derived from `InjectCssBaseError` with a stable `code`. Delivery and timeout errors also retain the request target and expose `operation` as `"insert"` or `"remove"`. For explicit MV2 frame targets, a delivery error may contain an `InjectCssFrameDeliveryError` cause with code `ERR_INJECT_CSS_FRAME_DELIVERY`, the failed `tabId`, `frameId`, operation, and native cause. Prefer `code` when errors may cross realms or multiple copies of the dependency may exist.
 
 Known validation and adapter incompatibilities fail before delivery. Browser capabilities discovered only by a native call are normalized after that call.
 

@@ -779,9 +779,16 @@ describe("MV2 adapter", () => {
             .catch(cause => cause);
 
         expect(error).toBeInstanceOf(InjectCssDeliveryError);
-        expect(error).toMatchObject({target, operation: "remove"});
+        expect(error).toMatchObject({
+            code: "ERR_INJECT_CSS_DELIVERY",
+            target,
+            operation: "remove",
+            message: "CSS removal failed in frame 3 of tab 2: Frame 3 is unavailable",
+        });
         expect(error.cause).toBeInstanceOf(InjectCssFrameDeliveryError);
+        expect(error.cause).toBeInstanceOf(InjectCssBaseError);
         expect(error.cause).toMatchObject({
+            code: "ERR_INJECT_CSS_FRAME_DELIVERY",
             tabId: 2,
             frameId: 3,
             operation: "remove",
@@ -948,8 +955,11 @@ describe("MV2 adapter", () => {
 
         expect(error).toBeInstanceOf(InjectCssDeliveryError);
         expect(error.target).toEqual(target);
+        expect(error.message).toBe("CSS injection failed in frame 3 of tab 2: Frame 3 is unavailable");
         expect(error.cause).toBeInstanceOf(InjectCssFrameDeliveryError);
+        expect(error.cause).toBeInstanceOf(InjectCssBaseError);
         expect(error.cause).toMatchObject({
+            code: "ERR_INJECT_CSS_FRAME_DELIVERY",
             tabId: 2,
             frameId: 3,
             cause: expect.objectContaining({message: "Frame 3 is unavailable"}),

@@ -2,6 +2,7 @@ import type {InjectCssOperation, InjectCssTarget} from "./types";
 
 export type InjectCssErrorCode =
     | "ERR_INJECT_CSS_DELIVERY"
+    | "ERR_INJECT_CSS_FRAME_DELIVERY"
     | "ERR_INJECT_CSS_INVALID_CODE"
     | "ERR_INJECT_CSS_INVALID_FILES"
     | "ERR_INJECT_CSS_INVALID_OPTIONS"
@@ -105,35 +106,39 @@ export class InjectCssTimeoutError extends InjectCssBaseError {
     }
 }
 
-export class InjectCssDeliveryError extends InjectCssBaseError {
-    public readonly target: InjectCssTarget;
-    public readonly operation: InjectCssOperation;
-
-    public constructor(target: InjectCssTarget, cause: unknown, operation: InjectCssOperation = "insert") {
-        const message = cause instanceof Error ? cause.message : String(cause);
-        const action = operation === "insert" ? "injection" : "removal";
-
-        super("InjectCssDeliveryError", "ERR_INJECT_CSS_DELIVERY", `CSS ${action} failed: ${message}`, cause);
-        this.target = target;
-        this.operation = operation;
-    }
-}
-
-export class InjectCssFrameDeliveryError extends Error {
+export class InjectCssFrameDeliveryError extends InjectCssBaseError {
     public readonly tabId: number;
     public readonly frameId: number;
     public readonly operation: InjectCssOperation;
-    public override readonly cause: unknown;
 
     public constructor(tabId: number, frameId: number, cause: unknown, operation: InjectCssOperation = "insert") {
         const message = cause instanceof Error ? cause.message : String(cause);
         const action = operation === "insert" ? "injection" : "removal";
 
-        super(`CSS ${action} failed in frame ${frameId} of tab ${tabId}: ${message}`);
-        this.name = "InjectCssFrameDeliveryError";
+        super(
+            "InjectCssFrameDeliveryError",
+            "ERR_INJECT_CSS_FRAME_DELIVERY",
+            `CSS ${action} failed in frame ${frameId} of tab ${tabId}: ${message}`,
+            cause
+        );
         this.tabId = tabId;
         this.frameId = frameId;
         this.operation = operation;
-        this.cause = cause;
+    }
+}
+
+export class InjectCssDeliveryError extends InjectCssBaseError {
+    public readonly target: InjectCssTarget;
+    public readonly operation: InjectCssOperation;
+
+    public constructor(target: InjectCssTarget, cause: unknown, operation: InjectCssOperation = "insert") {
+        const causeMessage = cause instanceof Error ? cause.message : String(cause);
+        const action = operation === "insert" ? "injection" : "removal";
+        const message =
+            cause instanceof InjectCssFrameDeliveryError ? causeMessage : `CSS ${action} failed: ${causeMessage}`;
+
+        super("InjectCssDeliveryError", "ERR_INJECT_CSS_DELIVERY", message, cause);
+        this.target = target;
+        this.operation = operation;
     }
 }
