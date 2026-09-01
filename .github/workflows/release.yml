@@ -82,7 +82,7 @@ jobs:
           fi
           NPM_TAG_ARG="--npm.tag=${NPM_TAG}"
 
-          npx release-it --ci $PREID_ARG $NPM_TAG_ARG $VERSION_ARG
+          npm run release -- --ci $PREID_ARG $NPM_TAG_ARG $VERSION_ARG
 
       - name: Sync main → develop
         uses: devmasx/merge-branch@v1.4.0
@@ -93,4 +93,3 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
         env:
           HUSKY: 0
-
