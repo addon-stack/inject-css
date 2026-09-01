@@ -1,6 +1,7 @@
 import injectCss, {
     type InjectCssErrorCode,
     type InjectCssExecutionOptions,
+    type InjectCssExecutionOptionsPatch,
     type InjectCssOrigin,
     type InjectCssTarget,
     type NonEmptyReadonlyArray,
@@ -61,6 +62,7 @@ topFrame.file([1]);
 topFrame.insert(42);
 
 topFrame.target({tabId, frameIds: [frameId]}).options({origin: "USER", timeoutMs: 100});
+topFrame.options({matchAboutBlank: undefined, runAt: undefined, origin: undefined, timeoutMs: undefined});
 
 // @ts-expect-error target changes belong to target(), not options()
 topFrame.options({target: {tabId: 99}});
@@ -74,10 +76,15 @@ const executionOptions: InjectCssExecutionOptions = {
     runAt: "document_idle",
     timeoutMs: 1_000,
 };
+const executionOptionsPatch: InjectCssExecutionOptionsPatch = {
+    origin: undefined,
+    timeoutMs: 2_000,
+};
 const target: InjectCssTarget = {tabId, documentIds: [documentId]};
 const errorCode: InjectCssErrorCode = "ERR_INJECT_CSS_DELIVERY";
 
 topFrame.options(executionOptions);
+topFrame.options(executionOptionsPatch);
 topFrame.target(target);
 errorCode.toUpperCase();
 

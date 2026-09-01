@@ -124,7 +124,16 @@ injector.options({
 });
 ```
 
-`options()` never accepts or changes a target.
+`options()` never accepts or changes a target. Passing an explicit `undefined` resets that option instead of retaining its previous value:
+
+```ts
+injector.options({
+  origin: undefined,
+  timeoutMs: undefined,
+});
+```
+
+The next operation then uses the native origin default and the package's default timeout.
 
 ## Execution options
 
@@ -225,7 +234,7 @@ interface InjectCssContract {
   insert(css: string): Promise<void>;
   file(files: string | NonEmptyReadonlyArray<string>): Promise<void>;
   target(target: InjectCssTarget): this;
-  options(options: Partial<InjectCssExecutionOptions>): this;
+  options(options: InjectCssExecutionOptionsPatch): this;
 }
 ```
 
@@ -251,6 +260,7 @@ Core type exports:
 InjectCssContract
 InjectCssOptions
 InjectCssExecutionOptions
+InjectCssExecutionOptionsPatch
 InjectCssOrigin
 InjectCssTarget
 InjectCssTopFrameTarget

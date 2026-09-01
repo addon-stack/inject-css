@@ -538,6 +538,38 @@ describe("MV2 adapter", () => {
         expect(calls[0]).not.toHaveProperty("matchAboutBlank");
     });
 
+    test("resets execution options when options() receives explicit undefined values", async () => {
+        const calls = [];
+
+        global.chrome = {
+            runtime: createRuntime(2),
+            tabs: {
+                insertCSS: (_tabId, details, callback) => {
+                    calls.push(details);
+                    setTimeout(callback, 10);
+                },
+            },
+        };
+
+        const injector = injectCss({
+            target: {tabId: 1},
+            origin: "USER",
+            matchAboutBlank: true,
+            runAt: "document_start",
+            timeoutMs: 1,
+        });
+
+        injector.options({
+            origin: undefined,
+            matchAboutBlank: undefined,
+            runAt: undefined,
+            timeoutMs: undefined,
+        });
+
+        await expect(injector.file("/content.css")).resolves.toBeUndefined();
+        expect(calls[0]).toEqual({file: "/content.css"});
+    });
+
     test("rejects document targets before native injection and retains the previous target", async () => {
         const calls = [];
 

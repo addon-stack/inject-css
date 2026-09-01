@@ -21,6 +21,7 @@ export type {
     InjectCssContract,
     InjectCssDocumentsTarget,
     InjectCssExecutionOptions,
+    InjectCssExecutionOptionsPatch,
     InjectCssFramesTarget,
     InjectCssOptions,
     InjectCssOrigin,

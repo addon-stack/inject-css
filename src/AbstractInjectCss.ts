@@ -9,6 +9,7 @@ import {
 import type {
     InjectCssContract,
     InjectCssExecutionOptions,
+    InjectCssExecutionOptionsPatch,
     InjectCssOptions,
     InjectCssTarget,
     NonEmptyReadonlyArray,
@@ -36,7 +37,7 @@ export default abstract class implements InjectCssContract {
         return this;
     }
 
-    public options(options: Partial<InjectCssExecutionOptions>): this {
+    public options(options: InjectCssExecutionOptionsPatch): this {
         const normalizedOptions = validateInjectCssExecutionOptions(options);
         const nextExecution = {...this._execution, ...normalizedOptions};
 

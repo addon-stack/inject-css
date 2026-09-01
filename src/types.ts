@@ -46,6 +46,10 @@ export interface InjectCssExecutionOptions {
     timeoutMs?: number;
 }
 
+export type InjectCssExecutionOptionsPatch = {
+    [Key in keyof InjectCssExecutionOptions]?: InjectCssExecutionOptions[Key] | undefined;
+};
+
 export interface InjectCssOptions extends InjectCssExecutionOptions {
     target: InjectCssTarget;
 }
@@ -57,5 +61,5 @@ export interface InjectCssContract {
 
     target(target: InjectCssTarget): this;
 
-    options(options: Partial<InjectCssExecutionOptions>): this;
+    options(options: InjectCssExecutionOptionsPatch): this;
 }
