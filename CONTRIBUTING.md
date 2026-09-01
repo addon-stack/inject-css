@@ -5,7 +5,7 @@
 
 # Contributing to @addon-core/inject-css
 
-This package provides one typed CSS-injection contract across Manifest V2 and Manifest V3. Contributions should preserve that boundary, keep unsupported capabilities explicit, and include verification for every affected adapter. By participating, you agree to abide by the project’s [Code of Conduct](CODE_OF_CONDUCT.md).
+This package provides one typed CSS insertion and removal contract across Manifest V2 and Manifest V3. Contributions should preserve that boundary, keep unsupported capabilities explicit, and include verification for every affected adapter. By participating, you agree to abide by the project’s [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Table of Contents
 
@@ -90,9 +90,11 @@ Note: Husky hooks are configured. Commit messages are validated with commitlint,
 - Every operation has one explicit `target`.
 - `allFrames`, `frameIds`, and `documentIds` remain mutually exclusive.
 - Unsupported targets and options fail explicitly; they are never removed silently or replaced with a broader target.
-- `insert()` and `file()` remain strict `Promise<void>` operations because native CSS APIs expose no portable per-frame result.
+- `insert()`, `file()`, `remove()`, and `removeFile()` remain strict `Promise<void>` operations because native CSS APIs expose no portable per-frame result.
 - File order is part of the CSS cascade contract and must be preserved.
 - Omitted options preserve native defaults.
+- Explicit `undefined` values passed to `options()` reset the corresponding option.
+- Removal must preserve the caller's exact source, target, and origin; the package does not track prior insertions.
 - Frame enumeration, document discovery, and application-specific result aggregation remain outside this package.
 
 ## Pull Request Workflow

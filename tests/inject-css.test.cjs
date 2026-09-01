@@ -10,6 +10,7 @@ const {
     InvalidInjectCssOptionsError,
     InvalidInjectCssTargetError,
     UnsupportedInjectCssOptionError,
+    UnsupportedInjectCssOperationError,
     UnsupportedInjectCssTargetError,
 } = require("../dist/index.cjs");
 
@@ -113,6 +114,14 @@ describe("InjectCss target and execution options", () => {
             expect(insertCSS).not.toHaveBeenCalled();
         }
     );
+
+    test("validates removal sources before checking native removal support", async () => {
+        global.chrome = {runtime: createRuntime(3), scripting: {}};
+        const injector = injectCss({target: {tabId: 1}});
+
+        await expect(injector.remove(" ")).rejects.toBeInstanceOf(InvalidInjectCssCodeError);
+        await expect(injector.removeFile([])).rejects.toBeInstanceOf(InvalidInjectCssFilesError);
+    });
 
     test("copies target arrays instead of retaining caller-owned state", async () => {
         const calls = [];
@@ -241,6 +250,138 @@ describe("MV3 adapter", () => {
                 origin: "USER",
             },
         ]);
+    });
+
+    test("removes code and ordered files with the exact MV3 source, target, and origin", async () => {
+        const calls = [];
+
+        global.chrome = {
+            runtime: createRuntime(3),
+            scripting: {
+                removeCSS: (details, callback) => {
+                    calls.push(details);
+                    callback();
+                },
+            },
+        };
+
+        const injector = injectCss({target: {tabId: 7, documentIds: ["doc"]}, origin: "USER"});
+
+        await expect(injector.remove("body { color: red; }")).resolves.toBeUndefined();
+        await expect(injector.removeFile(["/first.css", "/second.css"])).resolves.toBeUndefined();
+
+        expect(calls).toEqual([
+            {
+                target: {tabId: 7, documentIds: ["doc"]},
+                css: "body { color: red; }",
+                origin: "USER",
+            },
+            {
+                target: {tabId: 7, documentIds: ["doc"]},
+                files: ["/first.css", "/second.css"],
+                origin: "USER",
+            },
+        ]);
+    });
+
+    test("reports missing MV3 removal capability with a typed operation error", async () => {
+        global.chrome = {
+            runtime: createRuntime(3),
+            scripting: {
+                insertCSS: (_details, callback) => callback(),
+            },
+        };
+
+        const injector = injectCss({target: {tabId: 7}});
+
+        await expect(injector.insert("body { color: red; }")).resolves.toBeUndefined();
+
+        const error = await injector.remove("body { color: red; }").catch(cause => cause);
+
+        expect(error).toBeInstanceOf(UnsupportedInjectCssOperationError);
+        expect(error).toMatchObject({
+            code: "ERR_INJECT_CSS_UNSUPPORTED_OPERATION",
+            operation: "remove",
+        });
+    });
+
+    test("normalizes a native MV3 removal capability error", async () => {
+        global.chrome = {
+            runtime: createRuntime(3),
+            scripting: {
+                removeCSS: (_details, callback) => {
+                    global.chrome.runtime.lastError = {message: "scripting.removeCSS is not supported"};
+                    callback();
+                    global.chrome.runtime.lastError = undefined;
+                },
+            },
+        };
+
+        const error = await injectCss({target: {tabId: 7}})
+            .removeFile("/content.css")
+            .catch(cause => cause);
+
+        expect(error).toBeInstanceOf(UnsupportedInjectCssOperationError);
+        expect(error).toMatchObject({
+            code: "ERR_INJECT_CSS_UNSUPPORTED_OPERATION",
+            operation: "remove",
+            cause: expect.any(Error),
+        });
+    });
+
+    test("reports MV3 removal delivery failures with the operation", async () => {
+        global.chrome = {
+            runtime: createRuntime(3),
+            scripting: {
+                removeCSS: (_details, callback) => {
+                    global.chrome.runtime.lastError = {message: "Missing host permission"};
+                    callback();
+                    global.chrome.runtime.lastError = undefined;
+                },
+            },
+        };
+
+        const target = {tabId: 7, frameIds: [2]};
+        const error = await injectCss({target})
+            .remove("body { color: red; }")
+            .catch(cause => cause);
+
+        expect(error).toBeInstanceOf(InjectCssDeliveryError);
+        expect(error).toMatchObject({
+            code: "ERR_INJECT_CSS_DELIVERY",
+            target,
+            operation: "remove",
+            cause: expect.any(Error),
+        });
+        expect(error.message).toContain("CSS removal failed");
+    });
+
+    test("reports MV3 removal timeouts with the operation", async () => {
+        jest.useFakeTimers();
+
+        global.chrome = {
+            runtime: createRuntime(3),
+            scripting: {
+                removeCSS: () => {},
+            },
+        };
+
+        const target = {tabId: 7, allFrames: true};
+        const pending = injectCss({target, timeoutMs: 5})
+            .removeFile("/content.css")
+            .catch(cause => cause);
+
+        jest.advanceTimersByTime(5);
+        const error = await pending;
+
+        expect(error).toBeInstanceOf(InjectCssTimeoutError);
+        expect(error).toMatchObject({
+            code: "ERR_INJECT_CSS_TIMEOUT",
+            target,
+            timeoutMs: 5,
+            operation: "remove",
+        });
+        expect(error.message).toContain("CSS removal timed out");
     });
 
     test("does not materialize an omitted origin", async () => {
@@ -489,6 +630,163 @@ describe("MV2 adapter", () => {
 
         await expect(injectCss({target: {tabId: 12}}).insert("body { color: red; }")).resolves.toBeUndefined();
         expect(calls).toEqual([{tabId: 12, details: {code: "body { color: red; }"}}]);
+    });
+
+    test("removes MV2 code from explicit frames without forwarding runAt", async () => {
+        const calls = [];
+
+        global.browser = {
+            runtime: createRuntime(2),
+            tabs: {
+                removeCSS: (tabId, details) => {
+                    calls.push({tabId, details});
+                    return Promise.resolve();
+                },
+            },
+        };
+
+        await expect(
+            injectCss({
+                target: {tabId: 12, frameIds: [0, 3]},
+                origin: "USER",
+                matchAboutBlank: true,
+                runAt: "document_start",
+            }).remove("body { color: red; }")
+        ).resolves.toBeUndefined();
+
+        expect(calls).toEqual([
+            {
+                tabId: 12,
+                details: {
+                    code: "body { color: red; }",
+                    cssOrigin: "user",
+                    matchAboutBlank: true,
+                    frameId: 0,
+                },
+            },
+            {
+                tabId: 12,
+                details: {
+                    code: "body { color: red; }",
+                    cssOrigin: "user",
+                    matchAboutBlank: true,
+                    frameId: 3,
+                },
+            },
+        ]);
+    });
+
+    test("reports missing MV2 removal capability with a typed operation error", async () => {
+        global.chrome = {
+            runtime: createRuntime(2),
+            tabs: {
+                insertCSS: (_tabId, _details, callback) => callback(),
+            },
+        };
+
+        const error = await injectCss({target: {tabId: 7}})
+            .removeFile("/content.css")
+            .catch(cause => cause);
+
+        expect(error).toBeInstanceOf(UnsupportedInjectCssOperationError);
+        expect(error).toMatchObject({
+            code: "ERR_INJECT_CSS_UNSUPPORTED_OPERATION",
+            operation: "remove",
+        });
+    });
+
+    test("normalizes a native MV2 removal capability error", async () => {
+        global.chrome = {
+            runtime: createRuntime(2),
+            tabs: {
+                removeCSS: (_tabId, _details, callback) => {
+                    global.chrome.runtime.lastError = {message: "tabs.removeCSS is not supported"};
+                    callback();
+                    global.chrome.runtime.lastError = undefined;
+                },
+            },
+        };
+
+        const error = await injectCss({target: {tabId: 7}})
+            .remove("body { color: red; }")
+            .catch(cause => cause);
+
+        expect(error).toBeInstanceOf(UnsupportedInjectCssOperationError);
+        expect(error).toMatchObject({
+            code: "ERR_INJECT_CSS_UNSUPPORTED_OPERATION",
+            operation: "remove",
+            cause: expect.any(Error),
+        });
+    });
+
+    test("removes MV2 files sequentially while dispatching each file to frames in parallel", async () => {
+        const calls = [];
+        const callbacks = [];
+
+        global.chrome = {
+            runtime: createRuntime(2),
+            tabs: {
+                removeCSS: (tabId, details, callback) => {
+                    calls.push({tabId, details});
+                    callbacks.push(callback);
+                },
+            },
+        };
+
+        const pending = injectCss({target: {tabId: 6, frameIds: [0, 3]}}).removeFile(["/first.css", "/second.css"]);
+
+        expect(calls.map(call => call.details)).toEqual([
+            {file: "/first.css", frameId: 0},
+            {file: "/first.css", frameId: 3},
+        ]);
+
+        callbacks.splice(0).forEach(callback => {
+            callback();
+        });
+        await flushAsync();
+
+        expect(calls.map(call => call.details)).toEqual([
+            {file: "/first.css", frameId: 0},
+            {file: "/first.css", frameId: 3},
+            {file: "/second.css", frameId: 0},
+            {file: "/second.css", frameId: 3},
+        ]);
+
+        callbacks.splice(0).forEach(callback => {
+            callback();
+        });
+        await expect(pending).resolves.toBeUndefined();
+    });
+
+    test("retains the failed MV2 removal frame and operation", async () => {
+        global.chrome = {
+            runtime: createRuntime(2),
+            tabs: {
+                removeCSS: (_tabId, details, callback) => {
+                    if (details.frameId === 3) {
+                        global.chrome.runtime.lastError = {message: "Frame 3 is unavailable"};
+                    }
+
+                    callback();
+                    global.chrome.runtime.lastError = undefined;
+                },
+            },
+        };
+
+        const target = {tabId: 2, frameIds: [0, 3]};
+        const error = await injectCss({target})
+            .removeFile("/content.css")
+            .catch(cause => cause);
+
+        expect(error).toBeInstanceOf(InjectCssDeliveryError);
+        expect(error).toMatchObject({target, operation: "remove"});
+        expect(error.cause).toBeInstanceOf(InjectCssFrameDeliveryError);
+        expect(error.cause).toMatchObject({
+            tabId: 2,
+            frameId: 3,
+            operation: "remove",
+            cause: expect.objectContaining({message: "Frame 3 is unavailable"}),
+        });
     });
 
     test("maps canonical origin to MV2 casing and preserves supported execution options", async () => {

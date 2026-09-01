@@ -1,4 +1,4 @@
-import type {InjectCssTarget} from "./types";
+import type {InjectCssOperation, InjectCssTarget} from "./types";
 
 export type InjectCssErrorCode =
     | "ERR_INJECT_CSS_DELIVERY"
@@ -8,6 +8,7 @@ export type InjectCssErrorCode =
     | "ERR_INJECT_CSS_INVALID_TARGET"
     | "ERR_INJECT_CSS_TIMEOUT"
     | "ERR_INJECT_CSS_UNSUPPORTED_OPTION"
+    | "ERR_INJECT_CSS_UNSUPPORTED_OPERATION"
     | "ERR_INJECT_CSS_UNSUPPORTED_TARGET";
 
 export class InjectCssBaseError extends Error {
@@ -63,6 +64,20 @@ export class UnsupportedInjectCssOptionError extends InjectCssBaseError {
     }
 }
 
+export class UnsupportedInjectCssOperationError extends InjectCssBaseError {
+    public readonly operation: InjectCssOperation;
+
+    public constructor(operation: InjectCssOperation, message: string, cause?: unknown) {
+        super(
+            "UnsupportedInjectCssOperationError",
+            "ERR_INJECT_CSS_UNSUPPORTED_OPERATION",
+            `Unsupported InjectCss operation "${operation}": ${message}`,
+            cause
+        );
+        this.operation = operation;
+    }
+}
+
 export class InvalidInjectCssCodeError extends InjectCssBaseError {
     public constructor(message: string) {
         super("InvalidInjectCssCodeError", "ERR_INJECT_CSS_INVALID_CODE", `Invalid InjectCss code: ${message}`);
@@ -78,37 +93,47 @@ export class InvalidInjectCssFilesError extends InjectCssBaseError {
 export class InjectCssTimeoutError extends InjectCssBaseError {
     public readonly target: InjectCssTarget;
     public readonly timeoutMs: number;
+    public readonly operation: InjectCssOperation;
 
-    public constructor(target: InjectCssTarget, timeoutMs: number) {
-        super("InjectCssTimeoutError", "ERR_INJECT_CSS_TIMEOUT", `CSS injection timed out after ${timeoutMs} ms.`);
+    public constructor(target: InjectCssTarget, timeoutMs: number, operation: InjectCssOperation = "insert") {
+        const action = operation === "insert" ? "injection" : "removal";
+
+        super("InjectCssTimeoutError", "ERR_INJECT_CSS_TIMEOUT", `CSS ${action} timed out after ${timeoutMs} ms.`);
         this.target = target;
         this.timeoutMs = timeoutMs;
+        this.operation = operation;
     }
 }
 
 export class InjectCssDeliveryError extends InjectCssBaseError {
     public readonly target: InjectCssTarget;
+    public readonly operation: InjectCssOperation;
 
-    public constructor(target: InjectCssTarget, cause: unknown) {
+    public constructor(target: InjectCssTarget, cause: unknown, operation: InjectCssOperation = "insert") {
         const message = cause instanceof Error ? cause.message : String(cause);
+        const action = operation === "insert" ? "injection" : "removal";
 
-        super("InjectCssDeliveryError", "ERR_INJECT_CSS_DELIVERY", `CSS injection failed: ${message}`, cause);
+        super("InjectCssDeliveryError", "ERR_INJECT_CSS_DELIVERY", `CSS ${action} failed: ${message}`, cause);
         this.target = target;
+        this.operation = operation;
     }
 }
 
 export class InjectCssFrameDeliveryError extends Error {
     public readonly tabId: number;
     public readonly frameId: number;
+    public readonly operation: InjectCssOperation;
     public override readonly cause: unknown;
 
-    public constructor(tabId: number, frameId: number, cause: unknown) {
+    public constructor(tabId: number, frameId: number, cause: unknown, operation: InjectCssOperation = "insert") {
         const message = cause instanceof Error ? cause.message : String(cause);
+        const action = operation === "insert" ? "injection" : "removal";
 
-        super(`CSS delivery failed in frame ${frameId} of tab ${tabId}: ${message}`);
+        super(`CSS ${action} failed in frame ${frameId} of tab ${tabId}: ${message}`);
         this.name = "InjectCssFrameDeliveryError";
         this.tabId = tabId;
         this.frameId = frameId;
+        this.operation = operation;
         this.cause = cause;
     }
 }

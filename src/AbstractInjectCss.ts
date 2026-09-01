@@ -10,6 +10,7 @@ import type {
     InjectCssContract,
     InjectCssExecutionOptions,
     InjectCssExecutionOptionsPatch,
+    InjectCssOperation,
     InjectCssOptions,
     InjectCssTarget,
     NonEmptyReadonlyArray,
@@ -51,6 +52,10 @@ export default abstract class implements InjectCssContract {
 
     public abstract file(files: string | NonEmptyReadonlyArray<string>): Promise<void>;
 
+    public abstract remove(css: string): Promise<void>;
+
+    public abstract removeFile(files: string | NonEmptyReadonlyArray<string>): Promise<void>;
+
     protected abstract assertAdapterSupport(target: InjectCssTarget, execution: InjectCssExecutionOptions): void;
 
     protected validateCode(css: string): string {
@@ -73,7 +78,12 @@ export default abstract class implements InjectCssContract {
         return this._execution.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     }
 
-    protected async withTimeout<T>(task: Promise<T>, target: InjectCssTarget, timeoutMs: number): Promise<T> {
+    protected async withTimeout<T>(
+        task: Promise<T>,
+        target: InjectCssTarget,
+        timeoutMs: number,
+        operation: InjectCssOperation = "insert"
+    ): Promise<T> {
         return new Promise<T>((resolve, reject) => {
             let settled = false;
 
@@ -86,7 +96,7 @@ export default abstract class implements InjectCssContract {
             };
 
             const timeoutId = setTimeout(() => {
-                finish(() => reject(new InjectCssTimeoutError(target, timeoutMs)));
+                finish(() => reject(new InjectCssTimeoutError(target, timeoutMs, operation)));
             }, timeoutMs);
 
             task.then(
@@ -96,11 +106,11 @@ export default abstract class implements InjectCssContract {
         });
     }
 
-    protected deliveryError(target: InjectCssTarget, error: unknown): Error {
+    protected deliveryError(target: InjectCssTarget, error: unknown, operation: InjectCssOperation = "insert"): Error {
         if (error instanceof InjectCssDeliveryError || error instanceof InjectCssTimeoutError) {
             return error;
         }
 
-        return new InjectCssDeliveryError(target, error);
+        return new InjectCssDeliveryError(target, error, operation);
     }
 }

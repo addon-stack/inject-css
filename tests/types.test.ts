@@ -2,6 +2,7 @@ import injectCss, {
     type InjectCssErrorCode,
     type InjectCssExecutionOptions,
     type InjectCssExecutionOptionsPatch,
+    type InjectCssOperation,
     type InjectCssOrigin,
     type InjectCssTarget,
     type NonEmptyReadonlyArray,
@@ -49,6 +50,9 @@ const inserted: Promise<void> = topFrame.insert("body { color: red; }");
 const singleFile: Promise<void> = topFrame.file("/content.css");
 const files: NonEmptyReadonlyArray<string> = ["/first.css", "/second.css"];
 const multipleFiles: Promise<void> = topFrame.file(files);
+const removed: Promise<void> = topFrame.remove("body { color: red; }");
+const removedFile: Promise<void> = topFrame.removeFile("/content.css");
+const removedFiles: Promise<void> = topFrame.removeFile(files);
 
 topFrame.file(["/content.css"]);
 
@@ -58,8 +62,17 @@ topFrame.file([]);
 // @ts-expect-error every file must be a string
 topFrame.file([1]);
 
+// @ts-expect-error at least one file is required
+topFrame.removeFile([]);
+
+// @ts-expect-error every file must be a string
+topFrame.removeFile([1]);
+
 // @ts-expect-error CSS code must be a string
 topFrame.insert(42);
+
+// @ts-expect-error CSS code must be a string
+topFrame.remove(42);
 
 topFrame.target({tabId, frameIds: [frameId]}).options({origin: "USER", timeoutMs: 100});
 topFrame.options({matchAboutBlank: undefined, runAt: undefined, origin: undefined, timeoutMs: undefined});
@@ -82,12 +95,19 @@ const executionOptionsPatch: InjectCssExecutionOptionsPatch = {
 };
 const target: InjectCssTarget = {tabId, documentIds: [documentId]};
 const errorCode: InjectCssErrorCode = "ERR_INJECT_CSS_DELIVERY";
+const unsupportedOperationCode: InjectCssErrorCode = "ERR_INJECT_CSS_UNSUPPORTED_OPERATION";
+const operation: InjectCssOperation = "remove";
 
 topFrame.options(executionOptions);
 topFrame.options(executionOptionsPatch);
 topFrame.target(target);
 errorCode.toUpperCase();
+unsupportedOperationCode.toUpperCase();
+operation.toUpperCase();
 
 void inserted;
 void singleFile;
 void multipleFiles;
+void removed;
+void removedFile;
+void removedFiles;

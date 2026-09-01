@@ -12,6 +12,7 @@ export {
     InvalidInjectCssFilesError,
     InvalidInjectCssOptionsError,
     InvalidInjectCssTargetError,
+    UnsupportedInjectCssOperationError,
     UnsupportedInjectCssOptionError,
     UnsupportedInjectCssTargetError,
 } from "./errors";
@@ -23,6 +24,7 @@ export type {
     InjectCssExecutionOptions,
     InjectCssExecutionOptionsPatch,
     InjectCssFramesTarget,
+    InjectCssOperation,
     InjectCssOptions,
     InjectCssOrigin,
     InjectCssTarget,

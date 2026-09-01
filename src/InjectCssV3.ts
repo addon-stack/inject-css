@@ -1,10 +1,21 @@
-import {insertCss} from "@addon-core/browser";
+import {browser, insertCss, removeCss} from "@addon-core/browser";
 import AbstractInjectCss from "./AbstractInjectCss";
-import {UnsupportedInjectCssOptionError, UnsupportedInjectCssTargetError} from "./errors";
-import type {InjectCssExecutionOptions, InjectCssOptions, InjectCssTarget, NonEmptyReadonlyArray} from "./types";
+import {
+    UnsupportedInjectCssOperationError,
+    UnsupportedInjectCssOptionError,
+    UnsupportedInjectCssTargetError,
+} from "./errors";
+import type {
+    InjectCssExecutionOptions,
+    InjectCssOperation,
+    InjectCssOptions,
+    InjectCssTarget,
+    NonEmptyReadonlyArray,
+} from "./types";
 
 type CSSInjection = chrome.scripting.CSSInjection;
 type InjectionTarget = chrome.scripting.InjectionTarget;
+type CSSSource = {css: string; files?: never} | {files: string[]; css?: never};
 
 export default class extends AbstractInjectCss {
     public constructor(options: InjectCssOptions) {
@@ -20,6 +31,7 @@ export default class extends AbstractInjectCss {
         const timeoutMs = this.timeoutMs;
 
         await this.execute(
+            "insert",
             target,
             execution,
             {
@@ -38,6 +50,7 @@ export default class extends AbstractInjectCss {
         const timeoutMs = this.timeoutMs;
 
         await this.execute(
+            "insert",
             target,
             execution,
             {
@@ -47,6 +60,18 @@ export default class extends AbstractInjectCss {
             },
             timeoutMs
         );
+    }
+
+    public async remove(css: string): Promise<void> {
+        const code = this.validateCode(css);
+
+        await this.removeInjection({css: code});
+    }
+
+    public async removeFile(files: string | NonEmptyReadonlyArray<string>): Promise<void> {
+        const fileList = this.normalizeFiles(files);
+
+        await this.removeInjection({files: fileList});
     }
 
     protected assertAdapterSupport(_target: InjectCssTarget, execution: InjectCssExecutionOptions): void {
@@ -60,13 +85,16 @@ export default class extends AbstractInjectCss {
     }
 
     private async execute(
+        operation: InjectCssOperation,
         target: InjectCssTarget,
         execution: InjectCssExecutionOptions,
         injection: CSSInjection,
         timeoutMs: number
     ): Promise<void> {
         try {
-            await this.withTimeout(insertCss(injection), target, timeoutMs);
+            const task = operation === "insert" ? insertCss(injection) : removeCss(injection);
+
+            await this.withTimeout(task, target, timeoutMs, operation);
         } catch (error) {
             if (this.isUnsupportedDocumentTargetError(target, error)) {
                 throw new UnsupportedInjectCssTargetError(
@@ -75,8 +103,56 @@ export default class extends AbstractInjectCss {
                 );
             }
 
+            if (operation === "remove") {
+                this.throwUnsupportedRemovalCapability(error);
+            }
+
             this.throwUnsupportedOriginCapability(execution, error);
-            throw this.deliveryError(target, error);
+            throw this.deliveryError(target, error, operation);
+        }
+    }
+
+    private async removeInjection(source: CSSSource): Promise<void> {
+        const target = this.snapshotTarget();
+        const execution = this.snapshotExecution();
+        const timeoutMs = this.timeoutMs;
+
+        this.assertRemovalSupport();
+
+        await this.execute(
+            "remove",
+            target,
+            execution,
+            {
+                target: this.toNativeTarget(target),
+                ...source,
+                ...(execution.origin !== undefined ? {origin: execution.origin} : {}),
+            },
+            timeoutMs
+        );
+    }
+
+    private assertRemovalSupport(): void {
+        if (typeof browser().scripting?.removeCSS !== "function") {
+            throw new UnsupportedInjectCssOperationError(
+                "remove",
+                'the current MV3 browser does not expose "scripting.removeCSS".'
+            );
+        }
+    }
+
+    private throwUnsupportedRemovalCapability(error: unknown): void {
+        const message = error instanceof Error ? error.message : String(error);
+
+        if (
+            /remove\s*css/i.test(message) &&
+            /(not supported|unsupported|not (?:available|implemented)|is not a function)\b/i.test(message)
+        ) {
+            throw new UnsupportedInjectCssOperationError(
+                "remove",
+                'the current MV3 browser does not support "scripting.removeCSS".',
+                error
+            );
         }
     }
 

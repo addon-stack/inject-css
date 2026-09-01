@@ -5,13 +5,14 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/addon-stack/inject-css/ci.yml?style=for-the-badge)](https://github.com/addon-stack/inject-css/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE.md)
 
-Inject CSS code or extension stylesheets into browser tabs with one typed API for Manifest V2 and Manifest V3.
+Insert and remove CSS code or extension stylesheets in browser tabs with one typed API for Manifest V2 and Manifest V3.
 
-`@addon-core/inject-css` selects the correct native adapter, validates the target before injection, and keeps unsupported browser behavior explicit.
+`@addon-core/inject-css` selects the correct native adapter, validates the target before delivery, and keeps unsupported browser behavior explicit.
 
 - One target model for the top frame, all frames, selected frames, or selected documents
 - Runtime validation that matches the TypeScript contract
 - Ordered stylesheet injection
+- Matching stylesheet removal where the browser exposes a native removal API
 - Stable package errors for invalid, unsupported, failed, and timed-out operations
 - No silent selector fallback and no extra frame-enumeration permissions
 
@@ -37,9 +38,12 @@ const injector = injectCss({
 });
 
 await injector.insert("body { background: #f5f5f5; }");
+
+// The source, target, and origin match the insertion.
+await injector.remove("body { background: #f5f5f5; }");
 ```
 
-The package detects the current manifest version automatically. The same call uses `tabs.insertCSS` in MV2 and `scripting.insertCSS` in MV3.
+The package detects the current manifest version automatically. Insertion uses `tabs.insertCSS` in MV2 and `scripting.insertCSS` in MV3; removal uses the matching native removal API when available.
 
 ## Choose what to target
 
@@ -102,6 +106,27 @@ await injector.file([
 ```
 
 File lists must be non-empty and every path must be a non-empty string. Files are injected in the provided order. In MV2, one file completes for the requested target before the next file starts, preserving CSS cascade order.
+
+## Remove CSS
+
+Remove CSS code with `remove()` and extension stylesheets with `removeFile()`:
+
+```ts
+await injector.remove("body { background: #f5f5f5; }");
+
+await injector.removeFile("styles/content.css");
+
+await injector.removeFile([
+  "styles/reset.css",
+  "styles/theme.css",
+]);
+```
+
+Removal uses the injector's current target and origin. The CSS source, file list, target, and origin must match the values used for insertion. Removing a stylesheet that is not present is a native no-op.
+
+MV3 uses `scripting.removeCSS`. MV2 uses `tabs.removeCSS` only when the current browser exposes it; otherwise removal rejects with `UnsupportedInjectCssOperationError`. This capability is checked when removal is requested, so insertion remains available in MV2 browsers without `tabs.removeCSS`.
+
+MV2 removes multiple files sequentially in the provided order, matching its insertion behavior. `runAt` affects insertion only because the MV2 removal API has no corresponding field.
 
 ## Reuse an injector
 
@@ -174,17 +199,17 @@ try {
 }
 ```
 
-Every rejected package operation exposes an error derived from `InjectCssBaseError` with a stable `code`. Delivery and timeout errors also retain the request target. For explicit MV2 frame targets, a delivery error may contain an `InjectCssFrameDeliveryError` cause with the failed `tabId`, `frameId`, and native cause. Prefer `code` when errors may cross realms or multiple copies of the dependency may exist.
+Every rejected package operation exposes an error derived from `InjectCssBaseError` with a stable `code`. Delivery and timeout errors also retain the request target and expose `operation` as `"insert"` or `"remove"`. For explicit MV2 frame targets, a delivery error may contain an `InjectCssFrameDeliveryError` cause with the failed `tabId`, `frameId`, operation, and native cause. Prefer `code` when errors may cross realms or multiple copies of the dependency may exist.
 
-Known validation and adapter incompatibilities fail before injection. Browser capabilities discovered only by a native call are normalized after that call.
+Known validation and adapter incompatibilities fail before delivery. Browser capabilities discovered only by a native call are normalized after that call.
 
 ### What `Promise<void>` means
 
-Native CSS injection APIs do not provide a portable per-frame result. `insert()` and `file()` therefore resolve with no value.
+Native CSS injection and removal APIs do not provide a portable per-frame result. `insert()`, `file()`, `remove()`, and `removeFile()` therefore resolve with no value.
 
-A resolved promise means the native operation completed. It does not prove that CSS was applied in every requested frame. A rejected multi-target operation is not transactional: some targets or earlier files may already have received CSS.
+A resolved promise means the native operation completed. It does not prove that CSS was inserted or removed in every requested frame. A rejected multi-target operation is not transactional: some targets or earlier files may already have completed the requested change.
 
-In MV2, a timeout stops the package from starting later files in a sequential batch. In MV3, the complete file list is handed to the browser in one native call before a timeout can occur. In either adapter, a timeout cannot cancel a native browser operation that is already in progress.
+In MV2, a timeout stops the package from starting later files in a sequential insertion or removal batch. In MV3, the complete file list is handed to the browser in one native call before a timeout can occur. In either adapter, a timeout cannot cancel a native browser operation that is already in progress.
 
 ## Migrating from 0.3.x
 
@@ -233,6 +258,8 @@ import {injectCss} from "@addon-core/inject-css";
 interface InjectCssContract {
   insert(css: string): Promise<void>;
   file(files: string | NonEmptyReadonlyArray<string>): Promise<void>;
+  remove(css: string): Promise<void>;
+  removeFile(files: string | NonEmptyReadonlyArray<string>): Promise<void>;
   target(target: InjectCssTarget): this;
   options(options: InjectCssExecutionOptionsPatch): this;
 }
@@ -251,6 +278,7 @@ InvalidInjectCssFilesError
 InvalidInjectCssOptionsError
 InvalidInjectCssTargetError
 UnsupportedInjectCssOptionError
+UnsupportedInjectCssOperationError
 UnsupportedInjectCssTargetError
 ```
 
@@ -261,6 +289,7 @@ InjectCssContract
 InjectCssOptions
 InjectCssExecutionOptions
 InjectCssExecutionOptionsPatch
+InjectCssOperation
 InjectCssOrigin
 InjectCssTarget
 InjectCssTopFrameTarget
@@ -273,9 +302,9 @@ NonEmptyReadonlyArray
 
 ## Design boundaries
 
-The package focuses on portable programmatic CSS injection. It does not enumerate frames, discover document IDs, aggregate application-specific per-frame results, or claim atomic delivery across targets.
+The package focuses on portable programmatic CSS insertion and removal. It does not enumerate frames, discover document IDs, track which stylesheets were inserted, aggregate application-specific per-frame results, or claim atomic delivery across targets.
 
-Removing injected CSS is a separate lifecycle capability and is not part of the current contract.
+Callers remain responsible for retaining the exact source, target, and origin needed for later removal.
 
 ## License
 

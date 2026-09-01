@@ -4,6 +4,7 @@ type StyleOrigin = chrome.scripting.StyleOrigin;
 export type NonEmptyReadonlyArray<T> = readonly [T, ...T[]];
 
 export type InjectCssOrigin = StyleOrigin | `${StyleOrigin}`;
+export type InjectCssOperation = "insert" | "remove";
 
 export interface InjectCssTopFrameTarget {
     tabId: number;
@@ -58,6 +59,10 @@ export interface InjectCssContract {
     insert(css: string): Promise<void>;
 
     file(files: string | NonEmptyReadonlyArray<string>): Promise<void>;
+
+    remove(css: string): Promise<void>;
+
+    removeFile(files: string | NonEmptyReadonlyArray<string>): Promise<void>;
 
     target(target: InjectCssTarget): this;
 
