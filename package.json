@@ -57,11 +57,12 @@
     "lint:fix": "biome check --write .",
     "lint:fix:aggressive": "biome check --write --unsafe .",
     "lint:fix:unsafe": "biome check --write --unsafe .",
-    "test": "npm run test:types && npm run build && jest --bail",
+    "test": "npm run test:types && npm run build && jest --bail && npm run test:tooling",
     "test:ci": "npm run test:types && npm run build && jest --ci --coverage",
     "test:types": "tsc -p tests/tsconfig.json --noEmit",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "release": "release-it"
+    "release": "release-it",
+    "test:tooling": "node --test tests/dependency-release.test.mjs"
   },
   "lint-staged": {
     "{src,tests}/**/*.{js,jsx,ts,tsx,cjs,mjs}": [
@@ -84,18 +85,15 @@
     "@biomejs/biome": "^2.2.4",
     "@commitlint/cli": "^20.0.0",
     "@commitlint/config-conventional": "^20.0.0",
-    "@release-it/conventional-changelog": "^10.0.1",
+    "@release-it/conventional-changelog": "^12.0.2",
     "@types/chrome": "^0.2.7",
     "@types/jest": "^30.0.0",
+    "conventional-commits-parser": "^7.1.3",
     "husky": "^9.1.7",
-    "jest": "^30.1.3",
+    "jest": "^30.5.2",
     "lint-staged": "^16.2.1",
-    "release-it": "^19.0.5",
+    "release-it": "^21.1.1",
     "tsup": "^8.5.0",
     "typescript": "^5.9.2"
-  },
-  "overrides": {
-    "glob": "^9.3.5",
-    "source-map": "npm:source-map-js@^1.2.0"
   }
 }

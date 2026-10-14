@@ -4,3 +4,4 @@
 
 npm run typecheck || exit 1
 npm run test:ci || exit 1
+npm run test:tooling || exit 1
