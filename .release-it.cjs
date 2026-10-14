@@ -94,6 +94,7 @@ function getContributors() {
 const types = new Map([
     ["feat", "✨ Features"],
     ["fix", "🐛 Bug Fixed"],
+    ["deps", "📦 Dependencies"],
     ["perf", "⚡️ Performance Improvements"],
     ["refactor", "🛠️ Refactoring"],
     ["docs", "📝 Documentation"],
@@ -154,7 +155,7 @@ function whatBump(commits, currentVersion = pkg.version) {
             isMinor = true;
         }
 
-        if (["fix", "perf", "refactor", "ci"].includes(type)) {
+        if (["fix", "deps", "perf", "refactor"].includes(type)) {
             isPatch = true;
         }
     }
@@ -169,6 +170,62 @@ function whatBump(commits, currentVersion = pkg.version) {
     if (isPatch) return {level: 2};
 
     return null;
+}
+
+// Preserve the text escaping previously provided by Handlebars.
+const escapeHtml = value =>
+    String(value ?? "").replace(/[&<>"'`=]/g, character => {
+        const entities = {
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#x27;",
+            "`": "&#x60;",
+            "=": "&#x3D;",
+        };
+        return entities[character];
+    });
+
+function renderCommit(commit) {
+    const scope = commit.scope ? `**${escapeHtml(commit.scope)}:** ` : "";
+    const link = commit.href ? ` ([${escapeHtml(commit.shorthash)}](${escapeHtml(commit.href)}))` : "";
+    const body = commit.body ? `\n\n${commit.body}` : "";
+    return `* ${scope}${escapeHtml(commit.subject || commit.header)}${link}${body}`;
+}
+
+function renderContributor(contributor) {
+    const {name, login, email, url, count} = contributor;
+    let label = escapeHtml(name || email || "");
+    if (url) {
+        label = name
+            ? `[${escapeHtml(name)}](${escapeHtml(url)})${login ? ` (@${escapeHtml(login)})` : ""}`
+            : `[@${escapeHtml(login)}](${escapeHtml(url)})`;
+    } else if (email && name) {
+        label = `[${escapeHtml(name)}](${escapeHtml(email)})`;
+    }
+    return `- ${label} — ${escapeHtml(count)} commits`;
+}
+
+function renderChangelog(context) {
+    const name = context.name || context.pkg?.name;
+    const packageName = name ? `\`${escapeHtml(name)}\` ` : "";
+    const sections = [`## 🚀 Release ${packageName}v${escapeHtml(context.version)} (${escapeHtml(context.date)})`];
+    const notes = (context.noteGroups || []).flatMap(group => group.notes || []);
+    if (notes.length) {
+        sections.push(`### 💥 Breaking Changes\n\n${notes.map(note => `* ${note.text}`).join("\n\n")}`);
+    }
+    if (context.commitGroups?.length) {
+        for (const group of context.commitGroups) {
+            sections.push(`### ${escapeHtml(group.title)}\n\n${group.commits.map(renderCommit).join("\n\n")}`);
+        }
+    } else if (context.commits?.length) {
+        sections.push(context.commits.map(renderCommit).join("\n\n"));
+    }
+    if (context.contributors?.length) {
+        sections.push(`### 🙌 Contributors\n\n${context.contributors.map(renderContributor).join("\n")}`);
+    }
+    return `${sections.join("\n\n")}\n`;
 }
 
 const createReleaseConfig = () => {
@@ -213,16 +270,15 @@ const createReleaseConfig = () => {
         plugins: {
             "@release-it/conventional-changelog": {
                 infile: "CHANGELOG.md",
-                preset: "conventionalcommits",
+                preset: {
+                    name: "conventionalcommits",
+                    types: [...types.entries()].map(([type, section]) => ({type, section, effect: "changelog"})),
+                },
 
                 parserOpts: {
                     headerPattern: /^(\w+)(?:\(([^)]+)\))?(!)?:\s(.+?)(?:\s\(#\d+\))?$/,
                     headerCorrespondence: ["type", "scope", "breaking", "subject"],
                     noteKeywords: ["BREAKING CHANGE", "BREAKING-CHANGE"],
-                },
-
-                presetConfig: {
-                    types: [...types.entries()].map(([type, section]) => ({type, section, hidden: false})),
                 },
 
                 context: {
@@ -234,17 +290,7 @@ const createReleaseConfig = () => {
 
                 whatBump,
                 writerOpts: {
-                    headerPartial:
-                        "## 🚀 Release {{#if name}}`{{name}}` {{else}}{{#if @root.pkg}}`{{@root.pkg.name}}` {{/if}}{{/if}}v{{version}} ({{date}})\n\n",
-                    footerPartial: `{{#if @root.contributors.length}}\n### 🙌 Contributors\n\n{{#each @root.contributors}}- {{#if url}}{{#if name}}[{{name}}]({{url}}){{#if login}} (@{{login}}){{/if}}{{else}}[@{{login}}]({{url}}){{/if}}{{else}}{{#if email}}{{#if name}}[{{name}}]({{email}}){{else}}{{email}}{{/if}}{{else}}{{name}}{{/if}}{{/if}} — {{count}} commits\n{{/each}}{{/if}}`,
-                    mainTemplate:
-                        "{{> header}}\n" +
-                        "{{#if noteGroups}}\n### 💥 Breaking Changes\n\n{{#each noteGroups}}{{#each notes}}* {{{text}}}\n\n{{/each}}{{/each}}{{/if}}" +
-                        "{{#each commitGroups}}\n### {{title}}\n\n{{#each commits}}{{> commit root=@root}}\n{{/each}}\n\n{{/each}}" +
-                        "{{#unless commitGroups}}\n{{#each commits}}{{> commit root=@root}}\n{{/each}}{{/unless}}\n\n" +
-                        "{{> footer}}",
-                    commitPartial:
-                        "{{#if type}}* {{#if scope}}**{{scope}}:** {{/if}}{{#if subject}}{{subject}}{{else}}{{header}}{{/if}}{{#if href}} ([{{shorthash}}]({{href}})){{/if}}\n\n{{#if body}}{{{body}}}\n{{/if}}{{/if}}",
+                    template: renderChangelog,
                     groupBy: "type",
                     commitGroupsSort: "title",
                     commitsSort: ["scope", "subject"],
