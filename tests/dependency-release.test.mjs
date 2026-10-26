@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {spawnSync} from "node:child_process";
-import {copyFileSync, mkdtempSync, readFileSync, rmSync, symlinkSync} from "node:fs";
+import {copyFileSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {text} from "node:stream/consumers";
@@ -109,7 +109,12 @@ test("renders dependency updates in Dependencies in changelog and GitHub release
         assert.equal(release.github.releaseNotes({changelog}), changelog);
 
         // Exercise the installed release-it CLI as well as the writer, without publishing.
-        copyFileSync(join(root, "package.json"), join(cwd, "package.json"));
+        // Keep the fixture version aligned with its tag, independently of actual package releases.
+        const fixturePackage = JSON.stringify({
+            ...JSON.parse(readFileSync(join(root, "package.json"), "utf8")),
+            version: "0.4.0",
+        });
+        writeFileSync(join(cwd, "package.json"), fixturePackage);
         copyFileSync(join(root, ".release-it.cjs"), join(cwd, ".release-it.cjs"));
         symlinkSync(join(root, "node_modules"), join(cwd, "node_modules"), "junction");
         const dryRun = () => {
@@ -130,16 +135,21 @@ test("renders dependency updates in Dependencies in changelog and GitHub release
                 {cwd, env: {...env, HUSKY: "0"}, encoding: "utf8", timeout: 20000}
             );
             assert.equal(result.status, 0, result.error?.message || result.stderr || result.stdout);
-            assert.equal(
-                readFileSync(join(cwd, "package.json"), "utf8"),
-                readFileSync(join(root, "package.json"), "utf8")
-            );
+            assert.equal(readFileSync(join(cwd, "package.json"), "utf8"), fixturePackage);
             return result.stdout;
         };
         const patchRelease = dryRun();
         assert.match(patchRelease, /0\.4\.0.*0\.4\.1/);
         assert.match(patchRelease, /📦 Dependencies/);
         assert.match(patchRelease, /update chrome types/);
+
+        git("checkout", "--quiet", "-b", "deps-only", "v0.4.0");
+        git("commit", "--allow-empty", "-m", updateMessage);
+        const dependencyRelease = dryRun();
+        assert.match(dependencyRelease, /0\.4\.0.*0\.4\.1/);
+        assert.match(dependencyRelease, /📦 Dependencies/);
+        assert.match(dependencyRelease, /update dependencies/);
+        assert.doesNotMatch(dependencyRelease, /🐛 Bug Fixed/);
 
         git("checkout", "--quiet", "-b", "ci-only", "v0.4.0");
         git("commit", "--allow-empty", "-m", "ci: update workflow runtime");
