@@ -1,6 +1,6 @@
 {
   "name": "@addon-core/inject-css",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "A lightweight TypeScript-friendly library to inject CSS into browser extensions (Manifest V2 & V3)",
   "keywords": [
     "browser",
@@ -86,7 +86,7 @@
     "@commitlint/cli": "^20.0.0",
     "@commitlint/config-conventional": "^20.0.0",
     "@release-it/conventional-changelog": "^12.0.2",
-    "@types/chrome": "^0.3.5",
+    "@types/chrome": "^0.3.6",
     "@types/jest": "^30.0.0",
     "conventional-commits-parser": "^7.1.3",
     "husky": "^9.1.7",
