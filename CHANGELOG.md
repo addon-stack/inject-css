@@ -1,5 +1,15 @@
 # Changelog
 
+## 🚀 Release `@addon-core/inject-css` v0.4.4 (2026-11-16)
+
+### 📦 Dependencies
+
+* update dependencies ([8088bca](https://github.com/addon-stack/inject-css/commit/8088bcaf42248e0b73f85e4adbd69fa4060b15e0))
+
+### 🙌 Contributors
+
+- [Anjey Tsibylskij](https://github.com/atldays) (@atldays) — 1 commits
+
 ## 🚀 Release `@addon-core/inject-css` v0.4.3 (2026-11-05)
 
 ### 📦 Dependencies
